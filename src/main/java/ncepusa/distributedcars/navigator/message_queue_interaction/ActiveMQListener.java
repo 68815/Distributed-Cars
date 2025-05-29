@@ -51,6 +51,7 @@ public class ActiveMQListener {
     @Contract(pure = true)
     public ActiveMQListener(RedisInteraction redisInteraction) {
         this.redisInteraction = redisInteraction;
+        redisInteraction.setNaViIdFinish();
     }
     private static final Logger logger = LoggerFactory.getLogger(ActiveMQListener.class);
 
@@ -74,6 +75,7 @@ public class ActiveMQListener {
             readDataFromRedis();
             generatePath();
             writePathToRedis();
+            path.clear();
         } catch (Exception e) {
             logger.error("Error processing message: {}", message, e);
             registry.counter("messages.failed").increment();
@@ -98,13 +100,15 @@ public class ActiveMQListener {
             logger.error("redis中没有足够的数据，无法进行路径规划");
             return;
         }
+        logger.info(obstacleMap);
+        logger.info(visitedMap);
         if(mapSize.getX() * mapSize.getY() != visitedMap.length() || mapSize.getX() * mapSize.getY()!= obstacleMap.length()){
             registry.counter("messages.failed").increment();
             logger.error("redis中地图数据长度不一致，无法进行路径规划");
             return;
         }
         String[] parts = carPositionCoordinate.split(",");
-        carPosition = new Point(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
+        carPosition = new Point(Integer.parseInt(parts[1]), Integer.parseInt(parts[0]));
 
         long redisReadEnd = System.nanoTime();
 
@@ -151,7 +155,7 @@ public class ActiveMQListener {
         long redisWriteStart = System.nanoTime();
 
         redisInteraction.setTaskQueue(carId, path);
-        redisInteraction.setNaViIdFinish(1);
+        redisInteraction.setNaViIdFinish();
 
         long redisWriteEnd = System.nanoTime();
 

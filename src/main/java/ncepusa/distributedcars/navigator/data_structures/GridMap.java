@@ -1,12 +1,16 @@
 package ncepusa.distributedcars.navigator.data_structures;
 
+import ncepusa.distributedcars.navigator.message_queue_interaction.ActiveMQListener;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.geo.Point;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
 
 /**
  * <p>表示用于路径规划和导航的基于网格的地图结构。</p>
@@ -22,6 +26,8 @@ public class GridMap{
     private Point start;
     private Point end;
 
+    private static final Logger logger = LoggerFactory.getLogger(GridMap.class);
+
     @Contract(pure = true)
     public GridMap(@NotNull List<List<GridNode>> grid) {
         this.grid = grid;
@@ -34,11 +40,11 @@ public class GridMap{
         this.height = (int) mapSize.getY();
         this.start = start;
         this.grid = new ArrayList<>();
-        for (int i = 0; i < width; i++) {
+        for (int j = 0; j < width; j++) {
             ArrayList<GridNode> arrayList = new ArrayList<>();
-            for (int j = 0; j < height; j++) {
+            for (int i = 0; i < height; i++) {
                 GridNode gridNode = new GridNode(i, j);
-                int index = i * height + j;
+                int index = j * width + i;
                 gridNode.setG(2147000000);
                 gridNode.setParent(null);
                 if (index < visitedMap.length() && visitedMap.charAt(index) == '1') {
@@ -47,6 +53,7 @@ public class GridMap{
                 if (index < obstaclesMap.length() && obstaclesMap.charAt(index) == '1') {
                     gridNode.setObstacle(true);
                 }
+                gridNode.setArrived(true);
                 arrayList.add(gridNode);
             }
             grid.add(arrayList);
@@ -80,7 +87,7 @@ public class GridMap{
                 int nx = x + dx;
                 int ny = y + dy;
                 if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                    neighbors.add(grid.get(nx).get(ny));
+                    neighbors.add(grid.get(ny).get(nx));
                 }
             }
         }
@@ -136,22 +143,22 @@ public class GridMap{
         Point candidatePoint = null;
         Random rand = new Random();
         GridNode tmpNode;
-        st:for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
+        st:for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
                 if(i == start.getX() && j == start.getY()) continue;
-                tmpNode = grid.get(i).get(j);
+                tmpNode = grid.get(j).get(i);
                 if (!tmpNode.isObstacle() && tmpNode.isArrived()) {
                     int unexploredCount = countUnexploredNeighbors(tmpNode);
                     if (unexploredCount > maxUnexploredCount ||
                             (unexploredCount == maxUnexploredCount && maxUnexploredCount == 9 && rand.nextDouble() < 0.9)) {
                         maxUnexploredCount = unexploredCount;
-                        candidatePoint = new Point(i, j);
+                        candidatePoint = new Point(j, i);
                         if (maxUnexploredCount == 9 && rand.nextDouble() >= 0.9) break st;
                     }
                 }
             }
         }
-
+        logger.info("maxUnexploredCount:{}", maxUnexploredCount);
         if (candidatePoint != null) {
             this.end = candidatePoint;
         }

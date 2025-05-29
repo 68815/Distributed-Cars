@@ -28,6 +28,8 @@ public class RedisInteraction{
     private final RedisTemplate<String, String> map;
 
     private final String IS_NAVI_OPEN_LOCK_KEY = "IsNaviOpenLock";
+    private final String IS_NAVI_FINISH_LOCK_KEY = "IsNaviFinishLock";
+
 
 
     @Autowired
@@ -64,10 +66,30 @@ public class RedisInteraction{
                 .toArray(String[]::new));
     }
 
-    public void setNaViIdFinish(int isFinish)
+    public void setNaViIdFinish()
     {
-        assert map != null;
-        map.opsForValue().set("IsNaviFinish", String.valueOf(isFinish));
+       /* String sp = "rw";
+        char spp = sp.charAt(1);
+              spp |= 22;*/
+        String lockValue = UUID.randomUUID().toString();
+        long expireTime = 10000;
+
+        while (!acquireLock(IS_NAVI_OPEN_LOCK_KEY, lockValue, expireTime)) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        try {
+            String currentValue = map.opsForValue().get("IsNaviFinish");
+            int count = currentValue == null ? 0 : (Integer.parseInt(currentValue) ^ 1);
+            map.opsForValue().set("IsNaviFinish", String.valueOf(count));
+        } finally {
+            if (lockValue.equals(map.opsForValue().get(IS_NAVI_OPEN_LOCK_KEY))) {
+                releaseLock(IS_NAVI_OPEN_LOCK_KEY);
+            }
+        }
     }
 
     /**
