@@ -1,0 +1,42 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.4.5'
+	id 'io.spring.dependency-management' version '1.1.7'
+	id 'idea'
+}
+
+group = 'ncepu-sa'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(17)
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	implementation 'org.jetbrains:annotations:24.0.1'
+	implementation 'org.springframework.boot:spring-boot-starter'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+	implementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation 'org.springframework.boot:spring-boot-starter-activemq'
+	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
+	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	// https://mvnrepository.com/artifact/org.tinfour/TinfourCore
+	implementation 'org.tinfour:TinfourCore:2.1.8'
+	// https://mvnrepository.com/artifact/org.tinfour/TinfourAnalysis
+	//implementation 'org.tinfour:TinfourAnalysis:2.1.8'
+	// https://mvnrepository.com/artifact/org.tinfour/Tinfour
+	implementation 'org.tinfour:Tinfour:2.1.8'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
