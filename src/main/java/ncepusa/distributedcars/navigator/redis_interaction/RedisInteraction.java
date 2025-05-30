@@ -44,16 +44,14 @@ public class RedisInteraction{
             byte[] bytes = connection.stringCommands().get("map".getBytes());
             if (bytes == null) return null;
             Point mapSize = getMapSize();
-            StringBuilder result = new StringBuilder((int)(mapSize.getX() * mapSize.getY()));
-            for (byte b : bytes) {
+            StringBuilder result = new StringBuilder();
+            for (int k = 0; k < bytes.length; k++) {
                 for (int i = 7; i >= 0; i--) {
-                    result.append((b >> i) & 1);
+                    if(k * 8 + (8 - i) > (int)(mapSize.getX() * mapSize.getY())) break;
+                    result.append((bytes[k] >> i) & 1);
                 }
             }
-            // 根据实际地图大小截取所需位数
-            Point size = getMapSize();
-            int totalBits = (int) (size.getX() * size.getY());
-            return result.substring(0, Math.min(totalBits, result.length()));
+            return result.toString();
         });
     }
 
@@ -63,16 +61,14 @@ public class RedisInteraction{
             byte[] bytes = connection.stringCommands().get("obstacle_map".getBytes());
             if (bytes == null) return null;
             Point mapSize = getMapSize();
-            StringBuilder result = new StringBuilder((int)(mapSize.getX() * mapSize.getY()));
-            for (byte b : bytes) {
+            StringBuilder result = new StringBuilder();
+            for (int k = 0; k < bytes.length; k++) {
                 for (int i = 7; i >= 0; i--) {
-                    result.append((b >> i) & 1);
+                    if(k * 8 + (8 - i) > (int)(mapSize.getX() * mapSize.getY())) break;
+                    result.append((bytes[k] >> i) & 1);
                 }
             }
-            // 根据实际地图大小截取所需位数
-            Point size = getMapSize();
-            int totalBits = (int) (size.getX() * size.getY());
-            return result.substring(0, Math.min(totalBits, result.length()));
+            return result.toString();
         });
     }
 
@@ -119,8 +115,8 @@ public class RedisInteraction{
             int count = currentValue == null ? 0 : (Integer.parseInt(currentValue) + 1);
             map.opsForValue().set("IsNaviFinish", String.valueOf(count));
         } finally {
-            if (lockValue.equals(map.opsForValue().get(IS_NAVI_OPEN_LOCK_KEY))) {
-                releaseLock(IS_NAVI_OPEN_LOCK_KEY);
+            if (lockValue.equals(map.opsForValue().get(IS_NAVI_FINISH_LOCK_KEY))) {
+                releaseLock(IS_NAVI_FINISH_LOCK_KEY);
             }
         }
     }

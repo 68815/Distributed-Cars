@@ -40,9 +40,9 @@ public class GridMap{
         this.height = (int) mapSize.getY();
         this.start = start;
         this.grid = new ArrayList<>();
-        for (int j = 0; j < width; j++) {
+        for (int j = 0; j < height; j++) {
             ArrayList<GridNode> arrayList = new ArrayList<>();
-            for (int i = 0; i < height; i++) {
+            for (int i = 0; i < width; i++) {
                 GridNode gridNode = new GridNode(i, j);
                 int index = j * width + i;
                 gridNode.setG(2147000000);
@@ -141,29 +141,35 @@ public class GridMap{
     public void electEndpoint(int carNumbers, int carid) {
         Point candidatePoint = null;
         GridNode tmpNode;
-        int heightCount = carNumbers / 2;
+        int heightCount = (carNumbers + 1) / 2;
         int heightLength = height / heightCount;
         if((carNumbers & 1) == 1) heightLength = (int) (height / (0.5 + (double)heightCount));
-        int startx = ((carid & 1) == 0) ? width / 2 + 1 : 0;
-        int endx = startx == 0 ? width / 2 + 1: width;
-        int starty = (carid / 2) * heightLength;
+        int startx = (((carid & 1) == 0) ? width / 2 : 0);
+        int endx = (startx == 0 ? width / 2 : width);
+        int starty = ((carid - 1) / 2) * heightLength;
         int endy = starty + heightLength;
-
-        if((carNumbers & 1) == 1 && carid == carNumbers) {
+        if(carNumbers == 1)
+        {
+            startx = 0;
+            endx = width;
+            starty = 0;
+            endy = height;
+        }
+        else if((carNumbers & 1) == 1 && carid == carNumbers) {
             startx = 0;
             endx = width;
             starty = height - heightLength * heightCount;
             endy = height;
         }
         st : for(;starty < endy; starty++) {
-            boolean found = false;
-            for (int i = (start.getX() < width / 2 ? endx : startx); i < endx && i >= startx; i += (start.getX() < width / 2 ? -1 : 1)) {
+            for (int i = (start.getX() < (endx + startx) / 2 ? (endx - 1) : startx); i < endx && i >= startx; i += (start.getX() < (endx + startx) / 2 ? -1 : 1)) {
                 if (i == start.getX() && starty == start.getY()) continue;
                 tmpNode = grid.get(starty).get(i);
-                if(countUnexploredNeighbors(tmpNode) > 0){
-                    candidatePoint = new Point(starty, i);
-                    found = true;
-                    break st;
+                if(!tmpNode.isObstacle()) {
+                    if (countUnexploredNeighbors(tmpNode) > 0) {
+                        candidatePoint = new Point(starty, i);
+                        break st;
+                    }
                 }
             }
         }
@@ -177,11 +183,13 @@ public class GridMap{
                 for(int i = 0; i < width; i++){
                     if (i == start.getX() && j == start.getY()) continue;
                     tmpNode = grid.get(j).get(i);
-                    int exploredCount = countUnexploredNeighbors(tmpNode);
-                    if(exploredCount > maxUnexploredCount){
-                        maxUnexploredCount = exploredCount;
-                        candidatePoint = new Point(j, i);
-                        if(maxUnexploredCount == 9) break st;
+                    if(!tmpNode.isObstacle() && tmpNode.isArrived()) {
+                        int exploredCount = countUnexploredNeighbors(tmpNode);
+                        if (exploredCount > maxUnexploredCount) {
+                            maxUnexploredCount = exploredCount;
+                            candidatePoint = new Point(j, i);
+                            if (maxUnexploredCount == 9) break st;
+                        }
                     }
                 }
             }
