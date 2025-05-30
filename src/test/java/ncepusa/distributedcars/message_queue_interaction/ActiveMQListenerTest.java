@@ -64,6 +64,7 @@ public class ActiveMQListenerTest {
         }
         Point mapSize = new Point(1000, 1000);
 
+        when(redisInteraction.getCarNumbers()).thenReturn(1);
         when(redisInteraction.getCarPositionCoordinate(carId)).thenReturn(carPositionCoordinate);
         when(redisInteraction.getMap()).thenReturn(mapJson.toString());
         when(redisInteraction.getObstacleMap()).thenReturn(obstacleMapJson.toString());
@@ -72,7 +73,7 @@ public class ActiveMQListenerTest {
         ArgumentCaptor<List<GridNode>> pathCaptor = ArgumentCaptor.forClass(List.class);
 
         // Act
-        activeMQListener.primaryOnMessage(message);
+        activeMQListener.primaryOnMessage("\"Car001\"");
 
         Thread.sleep(13000);
 

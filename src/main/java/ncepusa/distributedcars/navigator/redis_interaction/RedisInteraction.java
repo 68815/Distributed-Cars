@@ -5,6 +5,7 @@ import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.geo.Point;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -39,19 +40,51 @@ public class RedisInteraction{
 
     public String getMap() {
         assert map != null;
-        return map.opsForValue().get("map");
+        return map.execute((RedisCallback<String>) connection -> {
+            byte[] bytes = connection.stringCommands().get("map".getBytes());
+            if (bytes == null) return null;
+            Point mapSize = getMapSize();
+            StringBuilder result = new StringBuilder((int)(mapSize.getX() * mapSize.getY()));
+            for (byte b : bytes) {
+                for (int i = 7; i >= 0; i--) {
+                    result.append((b >> i) & 1);
+                }
+            }
+            // 根据实际地图大小截取所需位数
+            Point size = getMapSize();
+            int totalBits = (int) (size.getX() * size.getY());
+            return result.substring(0, Math.min(totalBits, result.length()));
+        });
+    }
+
+    public String getObstacleMap() {
+        assert map != null;
+        return map.execute((RedisCallback<String>) connection -> {
+            byte[] bytes = connection.stringCommands().get("obstacle_map".getBytes());
+            if (bytes == null) return null;
+            Point mapSize = getMapSize();
+            StringBuilder result = new StringBuilder((int)(mapSize.getX() * mapSize.getY()));
+            for (byte b : bytes) {
+                for (int i = 7; i >= 0; i--) {
+                    result.append((b >> i) & 1);
+                }
+            }
+            // 根据实际地图大小截取所需位数
+            Point size = getMapSize();
+            int totalBits = (int) (size.getX() * size.getY());
+            return result.substring(0, Math.min(totalBits, result.length()));
+        });
     }
 
     public String getCarPositionCoordinate(String carId) {
         assert map != null;
         return map.opsForValue().get("Car" + carId);
     }
-
-    public String getObstacleMap() {
-        assert map != null;
-        return map.opsForValue().get("obstacle_map");
+    public int getCarNumbers()
+    {
+        assert map!= null;
+        return Integer.parseInt(Objects.requireNonNull(map.opsForValue().get("CarNumber")));
     }
-
     public Point getMapSize() {
         assert map != null;
         return new Point(
