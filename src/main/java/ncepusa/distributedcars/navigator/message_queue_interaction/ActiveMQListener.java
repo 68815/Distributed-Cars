@@ -17,7 +17,10 @@ import org.springframework.data.geo.Point;
 import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -37,14 +40,7 @@ public class ActiveMQListener {
     private final RedisInteraction redisInteraction;
     private final MeterRegistry registry = new SimpleMeterRegistry();
     private final ExecutorService executor = Executors.newFixedThreadPool(10);
-    
-    private String carId;
-    private String visitedMap;
-    private String obstacleMap;
-    private Point mapSize;
-    private Point carPosition;
-    private GridMap gridMap;
-    private List<GridNode> path;
+
     private final PathPlanning pathPlanning = new PathPlanning(null);
 
     @Autowired
@@ -70,11 +66,29 @@ public class ActiveMQListener {
 
     public void processMessage(String message) {
         try {
-            carId = message.substring(4);
+
+            String carId = message.substring(4);
             carId = carId.substring(0, carId.length() - 1);
-            readDataFromRedis();
-            generatePath();
-            writePathToRedis();
+            String visitedMap = "";
+            String obstacleMap = "";
+            Point mapSize = null;
+            Point carPosition = null;
+            GridMap gridMap = null;
+            List<GridNode> path = new ArrayList<GridNode>();
+
+            Map<String, Object> result = readDataFromRedis(carId, visitedMap, obstacleMap, mapSize, carPosition, gridMap);
+
+            mapSize = (Point) result.get("mapSize");
+            carPosition = (Point) result.get("carPosition");
+            visitedMap = (String) result.get("visitedMap");
+            obstacleMap = (String) result.get("obstacleMap");
+
+            result = generatePath(visitedMap, obstacleMap, mapSize, carPosition, gridMap, path);
+
+            gridMap = (GridMap) result.get("gridMap");
+            path = (List<GridNode>) result.get("path");
+
+            writePathToRedis(carId,path);
             path.clear();
         } catch (Exception e) {
             logger.error("Error processing message: {}", message, e);
@@ -86,42 +100,50 @@ public class ActiveMQListener {
      *  <p>从Redis中读取数据</p>
      *  <p>如果读取失败，记录失败消息并返回</p>
      */
-    private void readDataFromRedis() {
+    private Map<String, Object> readDataFromRedis(String carId, String visitedMap, String obstacleMap, Point mapSize, Point carPosition, GridMap gridMap) {
         long redisReadStart = System.nanoTime();
-
+        Map<String, Object> result = new HashMap<String, Object>();
         logger.info(carId);
         String carPositionCoordinate = redisInteraction.getCarPositionCoordinate(carId);
 
         visitedMap = redisInteraction.getMap();
         obstacleMap = redisInteraction.getObstacleMap();
         mapSize = redisInteraction.getMapSize();
+
         if(null == carPositionCoordinate || null == visitedMap || null == obstacleMap || null == mapSize){
             registry.counter("messages.failed").increment();
             logger.error("redis中没有足够的数据，无法进行路径规划");
-            return;
+            return null;
         }
         logger.info(obstacleMap);
         logger.info(visitedMap);
         if(mapSize.getX() * mapSize.getY() != visitedMap.length() || mapSize.getX() * mapSize.getY()!= obstacleMap.length()){
             registry.counter("messages.failed").increment();
             logger.error("redis中地图数据长度不一致，无法进行路径规划");
-            return;
+            return null;
         }
         String[] parts = carPositionCoordinate.split(",");
         carPosition = new Point(Integer.parseInt(parts[1]), Integer.parseInt(parts[0]));
 
+        result.put("visitedMap", visitedMap);
+        result.put("obstacleMap", obstacleMap);
+        result.put("mapSize", mapSize);
+        result.put("carPosition", carPosition);
+
         long redisReadEnd = System.nanoTime();
 
         logger.info("读redis花费时间： {} ms", (redisReadEnd - redisReadStart) / 1e6);
+        return result;
     }
 
     /**
      * <p>生成路径</p>
      * <p>如果生成失败，说明终点对于起点来说是不可达的，则更换终点重新规划</p>
      */
-    private void generatePath() {
+    private Map<String, Object> generatePath(String visitedMap, String obstacleMap, Point mapSize, Point carPosition, GridMap gridMap, List<GridNode> path) {
         long pathPlanningStart = System.nanoTime();
 
+        Map<String, Object> result = new HashMap<String, Object>();
         gridMap = new GridMap(visitedMap, obstacleMap, mapSize, carPosition);
         pathPlanning.setPathPlanning(new AStar());
         while(null == path || path.isEmpty())
@@ -130,6 +152,8 @@ public class ActiveMQListener {
             path = pathPlanning.planPath(gridMap, gridMap.getStart(), gridMap.getEnd());
             gridMap.getEnd().setArrived(false);
         }
+        result.put("gridMap", gridMap);
+        result.put("path", path);
         long pathPlanningEnd = System.nanoTime();
 
         //监视器记录时间
@@ -145,13 +169,14 @@ public class ActiveMQListener {
                 path.stream()
                         .map(node -> String.format("(%d,%d)", node.getX(), node.getY()))
                         .collect(Collectors.joining(" -> ")));
+        return result;
     }
 
     /**
      * <p>将路径写入Redis</p>
      * <p>如果写入失败，记录失败消息并返回</p>
      */
-    private void writePathToRedis() {
+    private void writePathToRedis(String carId, List<GridNode> path) {
         long redisWriteStart = System.nanoTime();
 
         redisInteraction.setTaskQueue(carId, path);

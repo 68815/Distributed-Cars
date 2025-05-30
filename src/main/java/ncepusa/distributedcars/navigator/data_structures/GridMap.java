@@ -143,27 +143,89 @@ public class GridMap{
         Point candidatePoint = null;
         Random rand = new Random();
         GridNode tmpNode;
-        st:for (int j = 0; j < height; j++) {
-            for (int i = 0; i < width; i++) {
-                if(i == start.getX() && j == start.getY()) continue;
-                tmpNode = grid.get(j).get(i);
-                if (!tmpNode.isObstacle() && tmpNode.isArrived()) {
-                    int unexploredCount = countUnexploredNeighbors(tmpNode);
-                    if (unexploredCount > maxUnexploredCount ||
-                            (unexploredCount == maxUnexploredCount && maxUnexploredCount == 9 && rand.nextDouble() < 0.9)) {
-                        maxUnexploredCount = unexploredCount;
-                        candidatePoint = new Point(j, i);
-                        if (maxUnexploredCount == 9 && rand.nextDouble() >= 0.9) break st;
+        //第一层随机：倾向于探索远处的点还是近处的点？
+        boolean isFar = rand.nextBoolean();
+        //第二层随机：优先选择左右还是上下?
+        boolean isLeftRight = rand.nextBoolean();
+        //第三层随机：随机一个起始点,优先外围点
+        int i = isLeftRight ?
+                (isFar ?
+                ((int)start.getX() < width / 2 ?
+                        width - 1 : 0) :
+                        ((int)start.getX() < width / 2 ?
+                        0 : width - 1))
+                : rand.nextInt(width);
+        int j = isLeftRight ?
+                rand.nextInt(height)
+                : (isFar?
+                ((int)start.getY() < height / 2 ?
+                        height - 1 : 0) :
+                ((int)start.getY() < height / 2 ?
+                        0 : height - 1));
+        int count = width * 2 + height * 2 - 4;
+        int times = 0;
+        //从外围开始，逐渐向中心靠近
+        st:while(count > 0)
+        {
+            int ii = i;
+            int jj = j;
+            //顺时针
+            int directions = 0;//方向
+            if(j == times && i != width - 1 - times) directions = 1;//向右
+            else if(i == width - 1 - times && j != height - 1 - times) directions = -2;//向下
+            else if(j == height - 1 - times && i != times) directions = -1;//向左
+            else if(i == times && j != times) directions = 2;//向上
+            for(int k = 0; k < count; k++)
+            {
+                if((directions & 1) == 0) {
+                    if(ii + directions < times){
+                        directions = 2;
+                        k--;
+                        continue;
                     }
+                    else if(ii + directions > width - 1 - times) {
+                        directions = -2;
+                        k--;
+                        continue;
+                    }
+                    else ii += directions;
+                }
+                else {
+                    if(jj + directions < times){
+                        directions = 1;
+                        k--;
+                        continue;
+                    }
+                    else if(jj + directions > height - 1 - times) {
+                        directions = -1;
+                        k--;
+                        continue;
+                    }
+                    else jj += directions / 2;
+                }
+                if(ii == start.getX() && jj == start.getY()) continue;
+                tmpNode = grid.get(jj).get(ii);
+                int unexploredCount = countUnexploredNeighbors(tmpNode);
+                if (unexploredCount > maxUnexploredCount ||
+                        (unexploredCount == maxUnexploredCount && maxUnexploredCount == 9 && rand.nextDouble() < 0.9) ||
+                        (unexploredCount < maxUnexploredCount && rand.nextDouble() < 0.1)) {
+                    maxUnexploredCount = unexploredCount;
+                    candidatePoint = new Point(jj, ii);
+                    if (maxUnexploredCount == 9 && rand.nextDouble() >= 0.9) break st;
                 }
             }
+            if(i == times) i++;
+            else if(i == width - 1 - times) i--;
+            if(j == times) j++;
+            else if(j == height - 1 - times) j--;
+            count -= 8;
+            times++;
         }
         logger.info("maxUnexploredCount:{}", maxUnexploredCount);
         if (candidatePoint != null) {
             this.end = candidatePoint;
         }
     }
-
     /**
      * 计算给定节点的未探索邻居数量。
      *
@@ -174,7 +236,7 @@ public class GridMap{
         int count = node.isVisited() ? 0 : 1;
         List<GridNode> neighbors = getNeighbors(node);
         for (GridNode neighbor : neighbors) {
-            if (!neighbor.isVisited() && !neighbor.isObstacle()) {
+            if (!neighbor.isVisited()) {
                 count++;
             }
         }

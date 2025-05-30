@@ -74,7 +74,7 @@ public class RedisInteraction{
         String lockValue = UUID.randomUUID().toString();
         long expireTime = 10000;
 
-        while (!acquireLock(IS_NAVI_OPEN_LOCK_KEY, lockValue, expireTime)) {
+        while (!acquireLock(IS_NAVI_FINISH_LOCK_KEY, lockValue, expireTime)) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
@@ -83,7 +83,7 @@ public class RedisInteraction{
         }
         try {
             String currentValue = map.opsForValue().get("IsNaviFinish");
-            int count = currentValue == null ? 0 : (Integer.parseInt(currentValue) ^ 1);
+            int count = currentValue == null ? 0 : (Integer.parseInt(currentValue) + 1);
             map.opsForValue().set("IsNaviFinish", String.valueOf(count));
         } finally {
             if (lockValue.equals(map.opsForValue().get(IS_NAVI_OPEN_LOCK_KEY))) {
