@@ -14,7 +14,7 @@ import java.util.*;
  * <p>JPS(jump point search)算法</p>
  *
  * @author 0109
- * @since 2025-05-21
+ * @since 2025-06-01
  */
 public class JPS implements PathPlanningStrategy {
     private static final Logger logger = LoggerFactory.getLogger(JPS.class);
