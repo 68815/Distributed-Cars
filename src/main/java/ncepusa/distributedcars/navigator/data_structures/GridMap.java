@@ -183,7 +183,7 @@ public class GridMap{
             }
         }
         logger.info("maxUnexploredCount: {}", maxUnexploredCount);
-        //当前carid的小车已探索完 分配给它的区域
+        //当前carid的小车已探索完 分配给它的区域,开始探索其他区域
         if (null == this.end) {
             maxUnexploredCount = -1;
             st : for(int j = 0; j < height; j++){
