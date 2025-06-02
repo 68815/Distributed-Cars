@@ -65,7 +65,7 @@ public class ActiveMQListenerTest {
             obstacleMapArray[i] = 0;
             for(int j = 0; j < mapSize.getY(); j++){
                 int index = i * (int)mapSize.getX() + j;
-                if(i % (3 + (i & 1)) == 0 && j % (7 + ((i * j) & 1)) <= 2) obstacleMapArray[index / 8] |= (byte) (1 << (7 - index % 8));
+                //if(i % (3 + (i & 1)) == 0 && j % (7 + ((i * j) & 1)) <= 2) obstacleMapArray[index / 8] |= (byte) (1 << (7 - index % 8));
             }
         }
 

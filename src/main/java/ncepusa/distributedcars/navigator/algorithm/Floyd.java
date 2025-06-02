@@ -7,6 +7,12 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
+/**
+ * <p>Floyd算法</p>
+ *
+ * @author 0109
+ * @since 2025-06-02
+ */
 public class Floyd implements PathPlanningStrategy {
     @Override
     public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
