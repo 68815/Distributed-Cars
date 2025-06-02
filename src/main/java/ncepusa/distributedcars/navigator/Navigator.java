@@ -21,6 +21,6 @@ public class Navigator {
     public Navigator(@NotNull RedisInteraction redisInteraction, @NotNull ActiveMQListener activeMQListener) {
         this.redisInteraction = redisInteraction;
         this.activeMQListener = activeMQListener;
-        redisInteraction.setOpen();
+        redisInteraction.setIsNaviOpen(1);
     }
 }

@@ -1,7 +1,6 @@
 package ncepusa.distributedcars.navigator.data_structures;
 
 import ncepusa.distributedcars.navigator.algorithm.PrimesUtil;
-import ncepusa.distributedcars.navigator.message_queue_interaction.ActiveMQListener;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -27,8 +26,8 @@ public class GridMap{
     private int height;
     private Point start;
     private Point end;
-
     private static final Logger logger = LoggerFactory.getLogger(GridMap.class);
+
 
     @Contract(pure = true)
     public GridMap(@NotNull List<List<GridNode>> grid) {
@@ -37,7 +36,7 @@ public class GridMap{
         this.height = grid.size();
     }
 
-    public GridMap(String visitedMap, String obstaclesMap, @NotNull Point mapSize, @NotNull Point start) {
+    public GridMap(byte[] visitedMap, byte[] obstaclesMap, @NotNull Point mapSize, @NotNull Point start) {
         this.width = (int) mapSize.getX();
         this.height = (int) mapSize.getY();
         this.start = start;
@@ -49,10 +48,10 @@ public class GridMap{
                 int index = j * width + i;
                 gridNode.setG(2147000000);
                 gridNode.setParent(null);
-                if (index < visitedMap.length() && visitedMap.charAt(index) == '1') {
+                if (index / 8 < visitedMap.length && ((visitedMap[index / 8] >> (7 - index % 8)) & 1) != 0) {
                     gridNode.setVisited(true);
                 }
-                if (index < obstaclesMap.length() && obstaclesMap.charAt(index) == '1') {
+                if (index / 8 < obstaclesMap.length && ((obstaclesMap[index / 8] >> (7 - index % 8)) & 1) != 0) {
                     gridNode.setObstacle(true);
                 }
                 gridNode.setArrived(true);
@@ -88,57 +87,25 @@ public class GridMap{
                 if (dx == 0 && dy == 0) continue;
                 int nx = x + dx;
                 int ny = y + dy;
-                if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                    neighbors.add(grid.get(ny).get(nx));
+                if(dx != 0 && dy!= 0) {
+                    GridNode horizontalNeighbor = getGridNode(nx, y);
+                    GridNode verticalNeighbor = getGridNode(x, ny);
+                    if(null != horizontalNeighbor && !horizontalNeighbor.isObstacle() &&
+                            null!= verticalNeighbor && !verticalNeighbor.isObstacle()){
+                        neighbors.add(getGridNode(nx,ny));
+                    }
+                }
+                else if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                    neighbors.add(getGridNode(nx,ny));
                 }
             }
         }
         return neighbors;
     }
 
-    public List<List<GridNode>> getGrid() {
-        return grid;
-    }
-
-    public void setGrid(List<List<GridNode>> grid) {
-        this.grid = grid;
-    }
-
-    public int getWidth() {
-        return width;
-    }
-
-    public void setWidth(int width) {
-        this.width = width;
-    }
-
-    public int getHeight() {
-        return height;
-    }
-
-    public void setHeight(int height) {
-        this.height = height;
-    }
-
-    public GridNode getStart() {
-        return grid.get((int)start.getX()).get((int)start.getY());
-    }
-
-    public void setStart(Point start) {
-        this.start = start;
-    }
-
-    public GridNode getEnd() {
-        return grid.get((int)end.getX()).get((int)end.getY());
-    }
-
-    public void setEnd(Point end) {
-        this.end = end;
-    }
-
     /**
      * 选择具有较多未探索点的区域作为终点。
-     * 终点的选择基于每个节点周围未探索邻居的数量。
+     * 终点的选择基于每个节点自身及其周围未探索邻居的数量。
      */
     public void electEndpoint(int carNumbers, int carid) {
         GridNode tmpNode;
@@ -286,4 +253,43 @@ public class GridMap{
         return grid.get(y).get(x);
     }
 
+    public List<List<GridNode>> getGrid() {
+        return grid;
+    }
+
+    public void setGrid(List<List<GridNode>> grid) {
+        this.grid = grid;
+    }
+
+    public int getWidth() {
+        return width;
+    }
+
+    public void setWidth(int width) {
+        this.width = width;
+    }
+
+    public int getHeight() {
+        return height;
+    }
+
+    public void setHeight(int height) {
+        this.height = height;
+    }
+
+    public GridNode getStart() {
+        return grid.get((int)start.getX()).get((int)start.getY());
+    }
+
+    public void setStart(Point start) {
+        this.start = start;
+    }
+
+    public GridNode getEnd() {
+        return grid.get((int)end.getX()).get((int)end.getY());
+    }
+
+    public void setEnd(Point end) {
+        this.end = end;
+    }
 }

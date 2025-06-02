@@ -3,6 +3,7 @@ package ncepusa.distributedcars.navigator.algorithm;
 import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.geo.Point;
 
 import java.util.*;
 

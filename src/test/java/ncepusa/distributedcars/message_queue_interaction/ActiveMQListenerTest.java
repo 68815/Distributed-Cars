@@ -18,6 +18,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.geo.Point;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -50,26 +51,28 @@ public class ActiveMQListenerTest {
         String carId = "001";
         String message = "\"Car" + carId + "\"";
         String carPositionCoordinate = "999,999";
-        StringBuilder mapJson = new StringBuilder();
+        Point mapSize = new Point(1000,1000);
+        byte[] mapArray = new byte[(int) ((mapSize.getX() * mapSize.getY() + 7)/ 8)];
         for(int i = 0; i < 1000; i++){
+            mapArray[i] = 0;
             for(int j = 0; j < 1000; j++){
-                if(i % (3 + (i & 1)) == 0 || j % (7 + ((i * j) & 1)) == 0) mapJson.append("1");
-                else mapJson.append("0");
+                int index = i * 1000 + j;
+                if(i % (3 + (i & 1)) == 0 || j % (7 + ((i * j) & 1)) == 0) mapArray[index / 8] |= (byte) (1 << (7 - index % 8));
             }
         }
-        StringBuilder obstacleMapJson = new StringBuilder();
+        byte[] obstacleMapArray = new byte[(int) ((mapSize.getX() * mapSize.getY() + 7)/ 8)];
         for(int i = 0; i < 1000; i++){
+            obstacleMapArray[i] = 0;
             for(int j = 0; j < 1000; j++){
-                if(i % (3 + (i & 1)) == 0 && j % (7 + ((i * j) & 1)) <= 2) obstacleMapJson.append("1");
-                else obstacleMapJson.append("0");
+                int index = i * 1000 + j;
+                if(i % (3 + (i & 1)) == 0 && j % (7 + ((i * j) & 1)) <= 2) obstacleMapArray[index / 8] |= (byte) (1 << (7 - index % 8));
             }
         }
-        Point mapSize = new Point(1000, 1000);
 
         when(redisInteraction.getCarNumbers()).thenReturn(1);
         when(redisInteraction.getCarPositionCoordinate(carId)).thenReturn(carPositionCoordinate);
-        when(redisInteraction.getMap()).thenReturn(mapJson.toString());
-        when(redisInteraction.getObstacleMap()).thenReturn(obstacleMapJson.toString());
+        when(redisInteraction.getMap()).thenReturn(mapArray);
+        when(redisInteraction.getObstacleMap()).thenReturn(obstacleMapArray);
         when(redisInteraction.getMapSize()).thenReturn(mapSize);
 
         ArgumentCaptor<List<GridNode>> pathCaptor = ArgumentCaptor.forClass(List.class);

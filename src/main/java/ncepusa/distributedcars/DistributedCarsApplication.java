@@ -20,7 +20,7 @@ public class DistributedCarsApplication{
 
 
         // 注册关闭钩子
-        Runtime.getRuntime().addShutdownHook(new Thread(redisInteraction::setClose));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> redisInteraction.setIsNaviOpen(-1)));
     }
 
 }

@@ -22,84 +22,65 @@ import java.util.concurrent.TimeUnit;
  */
 @Lazy
 @Component
-public class RedisInteraction{
+public class RedisInteraction {
     /**
-     * 地图
+     * RedisTemplate对象，用于与Redis进行交互
      */
-    private final RedisTemplate<String, String> map;
+    private final RedisTemplate<String, String> redisTemplate;
 
+    private static final String MAP_KEY = "map";
+    private static final String OBSTACLE_MAP_KEY = "obstacle_map";
+    private static final String CAR_NUMBER_KEY = "CarNumber";
+    private static final String MAP_LENGTH_KEY = "mapLength";
+    private static final String MAP_WIDTH_KEY = "mapWidth";
+    private static final String IS_NAVI_FINISH_KEY = "IsNaviFinish";
+    private static final String IS_NAVI_OPEN_KEY = "IsNaviOpen";
     private final String IS_NAVI_OPEN_LOCK_KEY = "IsNaviOpenLock";
     private final String IS_NAVI_FINISH_LOCK_KEY = "IsNaviFinishLock";
-
-
-
     @Autowired
     public RedisInteraction(RedisTemplate<String, String> redisTemplate) {
-        this.map = redisTemplate;
+        this.redisTemplate = redisTemplate;
     }
 
-    public String getMap() {
-        assert map != null;
-        return map.execute((RedisCallback<String>) connection -> {
-            byte[] bytes = connection.stringCommands().get("map".getBytes());
-            if (bytes == null) return null;
-            Point mapSize = getMapSize();
-            StringBuilder result = new StringBuilder();
-            for (int k = 0; k < bytes.length; k++) {
-                for (int i = 7; i >= 0; i--) {
-                    if(k * 8 + (8 - i) > (int)(mapSize.getX() * mapSize.getY())) break;
-                    result.append((bytes[k] >> i) & 1);
-                }
-            }
-            return result.toString();
+    public byte[] getMap() {
+        assert redisTemplate != null;
+        return redisTemplate.execute((RedisCallback<byte[]>) connection -> {
+            return connection.stringCommands().get(MAP_KEY.getBytes());
         });
     }
 
-    public String getObstacleMap() {
-        assert map != null;
-        return map.execute((RedisCallback<String>) connection -> {
-            byte[] bytes = connection.stringCommands().get("obstacle_map".getBytes());
-            if (bytes == null) return null;
-            Point mapSize = getMapSize();
-            StringBuilder result = new StringBuilder();
-            for (int k = 0; k < bytes.length; k++) {
-                for (int i = 7; i >= 0; i--) {
-                    if(k * 8 + (8 - i) > (int)(mapSize.getX() * mapSize.getY())) break;
-                    result.append((bytes[k] >> i) & 1);
-                }
-            }
-            return result.toString();
+    public byte[] getObstacleMap() {
+        assert redisTemplate != null;
+        return redisTemplate.execute((RedisCallback<byte[]>) connection -> {
+            return connection.stringCommands().get(OBSTACLE_MAP_KEY.getBytes());
         });
     }
 
     public String getCarPositionCoordinate(String carId) {
-        assert map != null;
-        return map.opsForValue().get("Car" + carId);
+        assert redisTemplate != null;
+        return redisTemplate.opsForValue().get("Car" + carId);
     }
     public int getCarNumbers()
     {
-        assert map!= null;
-        return Integer.parseInt(Objects.requireNonNull(map.opsForValue().get("CarNumber")));
+        assert redisTemplate != null;
+        return Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(CAR_NUMBER_KEY)));
     }
     public Point getMapSize() {
-        assert map != null;
+        assert redisTemplate != null;
         return new Point(
-                Integer.parseInt(Objects.requireNonNull(map.opsForValue().get("mapLength"))),
-                Integer.parseInt(Objects.requireNonNull(map.opsForValue().get("mapWidth"))));
+                Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_LENGTH_KEY))),
+                Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_WIDTH_KEY))));
     }
 
     public void setTaskQueue(String carId, @NotNull List<GridNode> gridNodes) {
-        assert map != null;
-        map.opsForList().rightPushAll("Car" + carId + "TaskList", gridNodes.stream()
+        assert redisTemplate != null;
+        redisTemplate.opsForList().rightPushAll("Car" + carId + "TaskList", gridNodes.stream()
                 .map(node -> node.getX() + "," + node.getY())
                 .toArray(String[]::new));
     }
 
     public void setNaViIdFinish()
     {
-       /* String sp = "rw";
-        char spp = sp.charAt(1);
-              spp |= 22;*/
         String lockValue = UUID.randomUUID().toString();
         long expireTime = 10000;
 
@@ -111,16 +92,41 @@ public class RedisInteraction{
             }
         }
         try {
-            String currentValue = map.opsForValue().get("IsNaviFinish");
+            String currentValue = redisTemplate.opsForValue().get(IS_NAVI_FINISH_KEY);
             int count = currentValue == null ? 0 : (Integer.parseInt(currentValue) + 1);
-            map.opsForValue().set("IsNaviFinish", String.valueOf(count));
+            redisTemplate.opsForValue().set(IS_NAVI_FINISH_KEY, String.valueOf(count));
         } finally {
-            if (lockValue.equals(map.opsForValue().get(IS_NAVI_FINISH_LOCK_KEY))) {
+            if (lockValue.equals(redisTemplate.opsForValue().get(IS_NAVI_FINISH_LOCK_KEY))) {
                 releaseLock(IS_NAVI_FINISH_LOCK_KEY);
             }
         }
     }
-
+    /**
+     * 设置导航器数量
+     * 加锁后，获取当前导航器数量，修改值，然后释放锁
+     * 加锁是为了避免多个进程或线程同时获取了导航器的数量然后修改，导致导航器数量不正确
+     */
+    public void setIsNaviOpen(int fix)
+    {
+        String lockValue = UUID.randomUUID().toString();
+        long expireTime = 10000;
+        while (!acquireLock(IS_NAVI_OPEN_LOCK_KEY, lockValue, expireTime)) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        try {
+            String currentValue = redisTemplate.opsForValue().get(IS_NAVI_OPEN_KEY);
+            int count = currentValue == null ? 0 : Integer.parseInt(currentValue);
+            redisTemplate.opsForValue().set(IS_NAVI_OPEN_KEY, String.valueOf(count + fix));
+        } finally {
+            if (lockValue.equals(redisTemplate.opsForValue().get(IS_NAVI_OPEN_LOCK_KEY))) {
+                releaseLock(IS_NAVI_OPEN_LOCK_KEY);
+            }
+        }
+    }
     /**
      * 获取参数key的锁
      * 该锁属于redis上的分布式锁
@@ -132,7 +138,7 @@ public class RedisInteraction{
      * @return 是否获取到锁
      */
     public boolean acquireLock(String key, String value, long expireTime) {
-        Boolean result = map.opsForValue().setIfAbsent(key, value, expireTime, TimeUnit.MILLISECONDS);
+        Boolean result = redisTemplate.opsForValue().setIfAbsent(key, value, expireTime, TimeUnit.MILLISECONDS);
         return Boolean.TRUE.equals(result);
     }
 
@@ -141,60 +147,6 @@ public class RedisInteraction{
      * @param key 锁的键
      */
     public void releaseLock(String key) {
-        map.delete(key);
-    }
-
-    /**
-     * 设置导航器数量加1
-     * 加锁后，获取当前导航器数量，加1，然后释放锁
-     * 加锁是为了避免多个进程同时获取了导航器的数量然后加1，导致导航器数量不正确
-     */
-    public void setOpen()
-    {
-        String lockValue = UUID.randomUUID().toString();
-        long expireTime = 10000;
-
-        while (!acquireLock(IS_NAVI_OPEN_LOCK_KEY, lockValue, expireTime)) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        try {
-            String currentValue = map.opsForValue().get("IsNaviOpen");
-            int count = currentValue == null ? 0 : Integer.parseInt(currentValue);
-            map.opsForValue().set("IsNaviOpen", String.valueOf(count + 1));
-        } finally {
-            if (lockValue.equals(map.opsForValue().get(IS_NAVI_OPEN_LOCK_KEY))) {
-                releaseLock(IS_NAVI_OPEN_LOCK_KEY);
-            }
-        }
-    }
-
-    public void setClose() {
-        String lockValue = UUID.randomUUID().toString();
-        long expireTime = 10000;
-
-        while (!acquireLock(IS_NAVI_OPEN_LOCK_KEY, lockValue, expireTime)) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        try {
-            String currentValue = map.opsForValue().get("IsNaviOpen");
-            int count = 1;
-            if (currentValue != null) {
-                count = Integer.parseInt(currentValue);
-            }
-            map.opsForValue().set("IsNaviOpen", String.valueOf(count - 1));
-        } finally {
-            if (lockValue.equals(map.opsForValue().get(IS_NAVI_OPEN_LOCK_KEY))) {
-                releaseLock(IS_NAVI_OPEN_LOCK_KEY);
-            }
-        }
+        redisTemplate.delete(key);
     }
 }

@@ -57,7 +57,7 @@ public class JPS implements PathPlanningStrategy {
                     }
                 }
             }
-            else {//有跳点，直接遍历跳点
+            else { // 有跳点，直接遍历跳点
                 for (GridNode jumpPoint : jumpPoints) {
                     if (closedSet.contains(jumpPoint)) continue;
                     double newCost = current.getG() +

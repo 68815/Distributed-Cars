@@ -19,9 +19,7 @@ import org.springframework.jms.annotation.JmsListener;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -44,8 +42,8 @@ public class ActiveMQListener {
 
     private final PathPlanning pathPlanning = new PathPlanning(null);
     private int carNumbers = 0;
-    List<String> visitedMap;
-    List<String> obstacleMap;
+    List<byte[]> visitedMap;
+    List<byte[]> obstacleMap;
     private Point mapSize;
     List<Point> carPosition;
     List<GridMap> gridMap;
@@ -56,8 +54,8 @@ public class ActiveMQListener {
     public ActiveMQListener(RedisInteraction redisInteraction) {
         this.redisInteraction = redisInteraction;
         redisInteraction.setNaViIdFinish();
-        visitedMap = new ArrayList<String>();
-        obstacleMap = new ArrayList<String>();
+        visitedMap = new ArrayList<byte[]>();
+        obstacleMap = new ArrayList<byte[]>();
         carPosition = new ArrayList<Point>();
         gridMap = new ArrayList<GridMap>();
         path = new ArrayList<List<GridNode>>();
@@ -76,9 +74,9 @@ public class ActiveMQListener {
     public void primaryOnMessage(@NotNull String message) {
         carNumbers = redisInteraction.getCarNumbers();
         while(carPosition.size() - 1 < carNumbers) {
-            visitedMap.add("");
-            obstacleMap.add("");
-            carPosition.add(new Point(0, 0));
+            visitedMap.add(null);
+            obstacleMap.add(null);
+            carPosition.add(null);
             gridMap.add(null);
             path.add(null);
         }
@@ -119,10 +117,9 @@ public class ActiveMQListener {
             logger.error("redis中没有足够的数据，无法进行路径规划");
             return;
         }
-        logger.info(obstacleMap.get(carid));
-        logger.info(visitedMap.get(carid));
-        if(mapSize.getX() * mapSize.getY() != visitedMap.get(carid).length() ||
-                mapSize.getX() * mapSize.getY()!= obstacleMap.get(carid).length()){
+
+        if(mapSize.getX() * mapSize.getY() > visitedMap.get(carid).length * 8 ||
+                mapSize.getX() * mapSize.getY() > obstacleMap.get(carid).length * 8){
             registry.counter("messages.failed").increment();
             logger.error("redis中地图数据长度不一致，无法进行路径规划");
             return;
