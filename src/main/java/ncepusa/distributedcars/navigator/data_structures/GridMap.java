@@ -252,6 +252,30 @@ public class GridMap{
         }
         return grid.get(y).get(x);
     }
+    
+    /**
+     * 判断两个节点是否为邻居
+     * @param u 第一个节点
+     * @param v 第二个节点
+     * @return 如果是邻居返回true，否则返回false
+     */
+    public boolean isNeighbor(@NotNull GridNode u, @NotNull GridNode v) {
+        int dx = Math.abs(u.getX() - v.getX());
+        int dy = Math.abs(u.getY() - v.getY());
+        return (dx <= 1 && dy <= 1) && !(dx == 0 && dy == 0);
+    }
+    
+    /**
+     * 获取地图中所有节点的列表
+     * @return 所有节点的列表
+     */
+    public List<GridNode> getAllNodes() {
+        List<GridNode> allNodes = new ArrayList<>();
+        for (List<GridNode> row : grid) {
+            allNodes.addAll(row);
+        }
+        return allNodes;
+    }
 
     public List<List<GridNode>> getGrid() {
         return grid;

@@ -50,21 +50,21 @@ public class ActiveMQListenerTest {
         new PrimesUtil();
         String carId = "001";
         String message = "\"Car" + carId + "\"";
-        String carPositionCoordinate = "999,999";
+        String carPositionCoordinate = "0,0";
         Point mapSize = new Point(1000,1000);
         byte[] mapArray = new byte[(int) ((mapSize.getX() * mapSize.getY() + 7)/ 8)];
-        for(int i = 0; i < 1000; i++){
+        for(int i = 0; i < mapSize.getX(); i++){
             mapArray[i] = 0;
-            for(int j = 0; j < 1000; j++){
-                int index = i * 1000 + j;
+            for(int j = 0; j < mapSize.getY(); j++){
+                int index = i * (int)mapSize.getX() + j;
                 if(i % (3 + (i & 1)) == 0 || j % (7 + ((i * j) & 1)) == 0) mapArray[index / 8] |= (byte) (1 << (7 - index % 8));
             }
         }
         byte[] obstacleMapArray = new byte[(int) ((mapSize.getX() * mapSize.getY() + 7)/ 8)];
-        for(int i = 0; i < 1000; i++){
+        for(int i = 0; i < mapSize.getX(); i++){
             obstacleMapArray[i] = 0;
-            for(int j = 0; j < 1000; j++){
-                int index = i * 1000 + j;
+            for(int j = 0; j < mapSize.getY(); j++){
+                int index = i * (int)mapSize.getX() + j;
                 if(i % (3 + (i & 1)) == 0 && j % (7 + ((i * j) & 1)) <= 2) obstacleMapArray[index / 8] |= (byte) (1 << (7 - index % 8));
             }
         }
@@ -80,7 +80,7 @@ public class ActiveMQListenerTest {
         // Act
         activeMQListener.primaryOnMessage(message);
 
-        Thread.sleep(13000);
+        Thread.sleep(10000);
 
         // Assert
         verify(redisInteraction, times(1)).getCarPositionCoordinate(eq(carId));

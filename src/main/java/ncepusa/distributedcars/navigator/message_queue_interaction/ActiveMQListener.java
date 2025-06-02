@@ -2,9 +2,7 @@ package ncepusa.distributedcars.navigator.message_queue_interaction;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import ncepusa.distributedcars.navigator.algorithm.AStar;
-import ncepusa.distributedcars.navigator.algorithm.JPS;
-import ncepusa.distributedcars.navigator.algorithm.PathPlanning;
+import ncepusa.distributedcars.navigator.algorithm.*;
 import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import ncepusa.distributedcars.navigator.redis_interaction.RedisInteraction;
@@ -145,7 +143,9 @@ public class ActiveMQListener {
                         mapSize,
                         carPosition.get(carid)));
         pathPlanning.setPathPlanning(new JPS());
-        while(null == path.get(carid) || path.get(carid).isEmpty()) {
+        int tryCount = 0;
+        while((null == path.get(carid) || path.get(carid).isEmpty()) &&
+                tryCount++ <= mapSize.getX() * mapSize.getY()) {
             gridMap.get(carid).electEndpoint(carNumbers, carid);
             path.set(carid, pathPlanning.planPath(gridMap.get(carid), gridMap.get(carid).getStart(), gridMap.get(carid).getEnd()));
             gridMap.get(carid).getEnd().setArrived(false);
