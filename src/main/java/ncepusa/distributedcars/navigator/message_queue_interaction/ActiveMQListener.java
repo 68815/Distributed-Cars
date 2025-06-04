@@ -1,7 +1,7 @@
 package ncepusa.distributedcars.navigator.message_queue_interaction;
 
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import ncepusa.distributedcars.navigator.algorithm.*;
 import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 public class ActiveMQListener {
 
     private final RedisInteraction redisInteraction;
-    private final MeterRegistry registry = new SimpleMeterRegistry();
+    PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
     private final ExecutorService executor = Executors.newFixedThreadPool(10);
 
     private final PathPlanning pathPlanning = new PathPlanning(null);
@@ -123,8 +123,7 @@ public class ActiveMQListener {
             return;
         }
         String[] parts = carPositionCoordinate.split(",");
-        carPosition.set(carid,new Point(Integer.parseInt(parts[1]), Integer.parseInt(parts[0])));
-
+        carPosition.set(carid,new Point(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
         long redisReadEnd = System.nanoTime();
 
         logger.info("读redis花费时间： {} ms", (redisReadEnd - redisReadStart) / 1e6);
@@ -142,13 +141,15 @@ public class ActiveMQListener {
                         obstacleMap.get(carid),
                         mapSize,
                         carPosition.get(carid)));
-        pathPlanning.setPathPlanning(new JPS());
+            pathPlanning.setPathPlanning(new JPS());
         int tryCount = 0;
-        while((null == path.get(carid) || path.get(carid).isEmpty()) &&
-                tryCount++ <= mapSize.getX() * mapSize.getY()) {
+        while((null == path.get(carid) || path.get(carid).isEmpty()) && tryCount++ <= mapSize.getX() * mapSize.getY()) {
+            if(tryCount != 1) {
+                gridMap.get(carid).getEnd().setArrived(false);
+                logger.info("第{}次尝试:终点（{}，{}）失败", tryCount, gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY());
+            }
             gridMap.get(carid).electEndpoint(carNumbers, carid);
             path.set(carid, pathPlanning.planPath(gridMap.get(carid), gridMap.get(carid).getStart(), gridMap.get(carid).getEnd()));
-            gridMap.get(carid).getEnd().setArrived(false);
         }
         long pathPlanningEnd = System.nanoTime();
 

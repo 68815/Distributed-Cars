@@ -17,17 +17,14 @@ public class Floyd implements PathPlanningStrategy {
     @Override
     public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
         if (start.equals(end)) {
-            return List.of(start);
+            return List.of();
         }
 
-        // 初始化距离矩阵和路径矩阵
         Map<GridNode, Map<GridNode, Double>> dist = new HashMap<>();
         Map<GridNode, Map<GridNode, GridNode>> next = new HashMap<>();
-        
-        // 获取所有节点
+
         List<GridNode> allNodes = map.getAllNodes();
-        
-        // 初始化距离和路径
+
         for (GridNode u : allNodes) {
             dist.put(u, new HashMap<>());
             next.put(u, new HashMap<>());
@@ -44,8 +41,7 @@ public class Floyd implements PathPlanningStrategy {
                 }
             }
         }
-        
-        // Floyd算法核心
+
         for (GridNode k : allNodes) {
             for (GridNode i : allNodes) {
                 for (GridNode j : allNodes) {
@@ -56,16 +52,12 @@ public class Floyd implements PathPlanningStrategy {
                 }
             }
         }
-        
-        // 如果无法到达终点
         if (next.get(start).get(end) == null) {
             return Collections.emptyList();
         }
-        
-        // 重建路径
+
         List<GridNode> path = new ArrayList<>();
         GridNode current = start;
-        path.add(current);
 
         int maxSteps = allNodes.size() * 2;
         int steps = 0;

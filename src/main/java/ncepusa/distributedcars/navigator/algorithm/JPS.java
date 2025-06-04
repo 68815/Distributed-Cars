@@ -25,7 +25,7 @@ public class JPS implements PathPlanningStrategy {
     @Override
     public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
         if (start.equals(end)) {
-            return List.of(start);
+            return List.of();
         }
         PriorityQueue<GridNode> openList = new PriorityQueue<>();
         Set<GridNode> closedSet = new HashSet<>();
@@ -37,41 +37,25 @@ public class JPS implements PathPlanningStrategy {
         while (!openList.isEmpty()) {
             GridNode current = openList.poll();
             if (current.equals(end)) {
-                return reconstructFullPath(current,map);
+                return reconstructFullPath(current, map);
             }
             closedSet.add(current);
             List<GridNode> jumpPoints = identifyJumpPoints(map, current, end);
 
-            if(jumpPoints.isEmpty()) { // 没有跳点，退化为A*，直接遍历所有邻居
-                jumpPoints = map.getNeighbors(current);
-                for (GridNode neighbor : jumpPoints) {
-                    if (neighbor.isObstacle() || closedSet.contains(neighbor)) continue;
-                    double tentativeGCost = current.getG()
-                            + (neighbor.getX() != current.getX() && neighbor.getY() != current.getY() ? Math.sqrt(2) : 1)
-                            + (neighbor.isVisited()? 2 : 0);
-                    if (tentativeGCost < neighbor.getG()) {
-                        neighbor.setG(tentativeGCost);
-                        neighbor.setParent(current);
-                        neighbor.setH(map.ManhattanDistance(neighbor, end));
-                        openList.add(neighbor);
-                    }
+            for (GridNode jumpPoint : jumpPoints) {
+                if (closedSet.contains(jumpPoint)) continue;
+                double newCost = current.getG() +
+                        Math.min(Math.abs(current.getX() - jumpPoint.getX()), Math.abs(current.getY() - jumpPoint.getY())) * Math.sqrt(2) +
+                        Math.abs(Math.abs(current.getX() - jumpPoint.getX())) - Math.abs(current.getY() - jumpPoint.getY()) +
+                        (jumpPoint.isVisited() ? 2 : 0);
+                if (newCost < jumpPoint.getG()) {
+                    jumpPoint.setG(newCost);
+                    jumpPoint.setH(map.ManhattanDistance(jumpPoint, end));
+                    jumpPoint.setParent(current);
+                    openList.add(jumpPoint);
                 }
             }
-            else { // 有跳点，直接遍历跳点
-                for (GridNode jumpPoint : jumpPoints) {
-                    if (closedSet.contains(jumpPoint)) continue;
-                    double newCost = current.getG() +
-                            Math.min(Math.abs(current.getX() - jumpPoint.getX()), Math.abs(current.getY() - jumpPoint.getY())) * Math.sqrt(2) +
-                            Math.abs(Math.abs(current.getX() - jumpPoint.getX())) - Math.abs(current.getY() - jumpPoint.getY()) +
-                            (jumpPoint.isVisited() ? 2 : 0);
-                    if (newCost < jumpPoint.getG()) {
-                        jumpPoint.setG(newCost);
-                        jumpPoint.setH(map.ManhattanDistance(jumpPoint, end));
-                        jumpPoint.setParent(current);
-                        openList.add(jumpPoint);
-                    }
-                }
-            }
+
         }
         return Collections.emptyList();
     }
@@ -110,14 +94,27 @@ public class JPS implements PathPlanningStrategy {
      * @param goal 在网格中搜索的目标节点
      * @return 识别出的跳点作为GridNode返回，如果没有找到跳点或方向无效，则返回null
      */
-    private @Nullable GridNode jump(@NotNull GridMap map, @NotNull GridNode current, @NotNull Point direction, GridNode goal) {
-        int newX = current.getX() + (int) direction.getX();
-        int newY = current.getY() + (int) direction.getY();
-        GridNode newNode = map.getGridNode(newX, newY);
-        if (newNode == null || newNode.isObstacle()) return null;
-        if (newNode.equals(goal) || map.hasForcedNeighbor(current, direction)) return newNode;
+    private @Nullable GridNode jump(@NotNull GridMap map,
+                                    @NotNull GridNode current,
+                                    @NotNull Point direction,
+                                    @NotNull GridNode goal) {
+        int dx = (int) direction.getX();
+        int dy = (int) direction.getY();
+        int newX = current.getX() + dx;
+        int newY = current.getY() + dy;
+        GridNode next = map.getGridNode(newX, newY);
 
-        return jump(map, newNode, direction, goal);
+        if (next == null || next.isObstacle()) return null;
+        if (next.equals(goal) || map.hasForcedNeighbor(next, direction)) return next;
+
+        // 如果是斜向跳跃，继续检查横向和纵向是否有跳点
+        if (dx != 0 && dy != 0) {
+            if(null != jump(map, next, new Point(dx, 0), goal)) return next;
+            if(null != jump(map, next, new Point(0, dy), goal)) return next;
+            if(null != jump(map, next, new Point(-dx, 0), goal)) return next;
+            if(null != jump(map, next, new Point(0, -dy), goal)) return next;
+        }
+        return jump(map, next, direction, goal);
     }
 
     /**

@@ -26,6 +26,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-activemq'
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis-reactive'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	// https://mvnrepository.com/artifact/io.micrometer/micrometer-registry-prometheus
+	implementation("io.micrometer:micrometer-registry-prometheus:1.15.0")
 	// https://mvnrepository.com/artifact/org.tinfour/TinfourCore
 	implementation 'org.tinfour:TinfourCore:2.1.8'
 	// https://mvnrepository.com/artifact/org.tinfour/TinfourAnalysis

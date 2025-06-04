@@ -94,7 +94,6 @@ public class GridNode implements Comparable<GridNode> {
     @Contract(value = "null -> false", pure = true)
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         GridNode gridNode = (GridNode) o;
         return position.getX() == gridNode.getXY().getX() && position.getY() == gridNode.getXY().getY();
