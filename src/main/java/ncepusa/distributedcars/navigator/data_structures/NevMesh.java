@@ -17,6 +17,8 @@ import java.util.Map;
  *
  * 该类依赖于增量三角剖分（IncrementalTin）来管理地图网格，并通过多边形列表存储障碍物信息。
  *
+ * @author 0109
+ * @since 2025-05-15
  * @deprecated 当前版本暂不使用，保留供未来扩展
  */
 @Deprecated

@@ -12,6 +12,7 @@ import java.util.Objects;
  * 四叉树结点，每个结点可以是叶结点，也可以继续分裂
  *
  * @author 0109
+ * @since 2025-05-10
  * @deprecated 当前版本暂不使用，保留供未来扩展
  */
 @Deprecated

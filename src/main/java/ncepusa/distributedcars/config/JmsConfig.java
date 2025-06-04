@@ -5,6 +5,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jms.config.DefaultJmsListenerContainerFactory;
 
+/**
+ * <p>JMS配置类</p>
+ *
+ * @author 0109
+ * @since 2025-06-04
+ */
 @Configuration
 public class JmsConfig {
 

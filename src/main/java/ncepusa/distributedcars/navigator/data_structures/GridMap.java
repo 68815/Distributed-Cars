@@ -178,7 +178,6 @@ public class GridMap {
             }
         }
         if (null != tmpEnd) this.end = tmpEnd;
-
     }
 
     /**

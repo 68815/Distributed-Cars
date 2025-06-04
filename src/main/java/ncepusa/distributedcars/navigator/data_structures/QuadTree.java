@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
  * 该四叉树属于静态四叉树，不支持动态分裂和合并。
  *
  * @author 0109
+ * @since 2025-05-10
  * @deprecated 当前版本暂不使用，保留供未来扩展
  */
 @Deprecated

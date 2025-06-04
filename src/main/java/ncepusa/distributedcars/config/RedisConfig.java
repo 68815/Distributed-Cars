@@ -6,6 +6,12 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 
+/**
+ * Redis配置类
+ *
+ * @author 0109
+ * @since 2025-06-04
+ */
 @Configuration
 public class RedisConfig {
     @Bean

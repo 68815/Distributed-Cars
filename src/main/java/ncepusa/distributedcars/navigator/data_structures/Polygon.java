@@ -10,6 +10,8 @@ import java.util.List;
 /**
  * 多边形类
  *
+ * @author 0109
+ * @since 2025-05-15
  * @deprecated 当前版本暂不使用，保留供未来扩展
  */
 @Deprecated
