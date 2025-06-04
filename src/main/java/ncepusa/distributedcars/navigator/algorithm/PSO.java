@@ -10,7 +10,9 @@ import java.util.List;
  *
  * @author 0109
  * @since 2025-05-21
+ * @deprecated 作者暂时还没学PSO
  */
+@Deprecated
 public class PSO implements PathPlanningStrategy{
 
     @Override

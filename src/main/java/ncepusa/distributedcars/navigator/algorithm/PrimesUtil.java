@@ -18,9 +18,7 @@ public class PrimesUtil {
     }
 
     /**
-     * 欧拉筛算法，初始化素数表
-     * 时间复杂度：O(nloglogn)
-     * 空间复杂度：O(n)
+     * <p>欧拉筛</p>
      */
     private static void initializePrimes() {
         isPrime = new ArrayList<Boolean>(Collections.nCopies(MAX_CAR_ID, true));
@@ -29,7 +27,7 @@ public class PrimesUtil {
         isPrime.set(1, false);
         for (int i = 2; i < MAX_CAR_ID; i++) {
             if(isPrime.get(i)) primes.add(i);
-            for (int j = 0; j <= primes.size() && primes.get(j) * i < MAX_CAR_ID; j++) {
+            for (int j = 0; j < primes.size() && primes.get(j) * i < MAX_CAR_ID; j++) {
                 isPrime.set(primes.get(j) * i, false);
                 if (i % primes.get(j) == 0) break;
             }

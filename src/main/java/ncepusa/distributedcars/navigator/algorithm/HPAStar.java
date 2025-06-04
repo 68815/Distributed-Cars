@@ -15,7 +15,7 @@ import java.util.Map;
  * <p>HPA*(Hierarchical Pathfinding A*)算法</p>
  *
  * @author 0109
- * @since 2025-06-06
+ * @since 2025-06-04
  * @deprecated  该算法目前存在问题，需要进一步改正
  */
 @Deprecated

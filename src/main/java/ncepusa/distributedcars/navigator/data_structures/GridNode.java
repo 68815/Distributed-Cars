@@ -7,7 +7,7 @@ import org.springframework.data.geo.Point;
 import java.util.Objects;
 
 /**
- * 地图节点类
+ * <p>网格地图节点类</p>
  *
  * @author 0109
  * @since 2025-05-21

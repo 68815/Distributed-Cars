@@ -1,15 +1,17 @@
 package ncepusa.distributedcars.navigator.data_structures;
 
+import org.jetbrains.annotations.NotNull;
+
 /**
- * <p>并查集数据结构</p>
+ * <p>并查集</p>
  *
  * @author TraeAI
  * @since 2025-06-04
  * @version 1.0
  */
 public class UnionFind {
-    private int[] parent;
-    private int[] rank;
+    private final int[] parent;
+    private final int[] rank;
     private int count;
 
     public UnionFind(int size) {
@@ -52,7 +54,7 @@ public class UnionFind {
     }
 
     /**
-     * 统计gridmap中的连通块数量
+     * 统计gridMap中的连通块数量
      * @param grid 二维网格数组
      * @return 连通块数量
      */
@@ -61,22 +63,8 @@ public class UnionFind {
         
         int m = grid.length;
         int n = grid[0].length;
-        UnionFind uf = new UnionFind(m * n);
-        
-        for (int i = 0; i < m; i++) {
-            for (int j = 0; j < n; j++) {
-                if (grid[i][j] == 0) continue; // 跳过障碍物
-                
-                // 检查右侧和下侧相邻单元格
-                if (j + 1 < n && grid[i][j + 1] != 0) {
-                    uf.union(i * n + j, i * n + j + 1);
-                }
-                if (i + 1 < m && grid[i + 1][j] != 0) {
-                    uf.union(i * n + j, (i + 1) * n + j);
-                }
-            }
-        }
-        
+        final UnionFind uf = getUnionFind(grid, m, n);
+
         // 统计实际连通块数量（排除障碍物）
         int connected = 0;
         for (int i = 0; i < m; i++) {
@@ -88,5 +76,24 @@ public class UnionFind {
         }
         
         return connected;
+    }
+
+    private static @NotNull UnionFind getUnionFind(byte[][] grid, int m, int n) {
+        UnionFind uf = new UnionFind(m * n);
+
+        for (int i = 0; i < m; i++) {
+            for (int j = 0; j < n; j++) {
+                if (grid[i][j] == 0) continue; // 跳过障碍物
+
+                // 检查右侧和下侧相邻单元格
+                if (j + 1 < n && grid[i][j + 1] != 0) {
+                    uf.union(i * n + j, i * n + j + 1);
+                }
+                if (i + 1 < m && grid[i + 1][j] != 0) {
+                    uf.union(i * n + j, (i + 1) * n + j);
+                }
+            }
+        }
+        return uf;
     }
 }
