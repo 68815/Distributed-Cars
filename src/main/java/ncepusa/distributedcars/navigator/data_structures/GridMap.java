@@ -105,8 +105,19 @@ public class GridMap {
     }
 
     /**
-     * 选择具有较多未探索点的区域作为终点。
-     * 终点的选择基于每个节点自身及其周围未探索邻居的数量。
+     * <p>根据小车数量划分区域：</p>
+     * <ul>
+     *   <li>奇数小车数量时，最后一个区域覆盖剩余空间，<b>尽量</b>保证所有小车探索区域的大小是一致的</li>
+     *   <li>偶数小车数量时，均匀分配区域</li>
+     * </ul>
+     * <p>根据当前的carid分配探索区域：</p>
+     * <ul>
+     *   <li>ID为奇数的小车负责左侧区域</li>
+     * <p>分配区域后，每个小车在自己的区域内选择具有较多未探索点的点作为终点。</p>
+     * <p>终点的选择基于每个节点自身及其周围未探索邻居的数量。</p>
+     *
+     * @param carNumbers 小车数量
+     * @param carid 当前小车的id
      */
     public void electEndpoint(int carNumbers, int carid) {
         GridNode tmpNode;
@@ -198,7 +209,8 @@ public class GridMap {
     }
 
     /**
-     * 检查在给定方向上是否存在“强制邻居”。
+     * <p>检查在给定方向上是否存在“强制邻居”。</p>
+     * <p>不需要考虑父节点和当前节点的相对方向，JPS算法的实现保证了父节点和当前节点的相对方向和direction指示的方向一定是一致的</p>
      *
      * @param current   当前节点
      * @param direction 方向节点（表示方向）
@@ -273,9 +285,9 @@ public class GridMap {
     }
 
     /**
-     * 获取地图中所有节点的列表
+     * 获取地图中所有节点
      *
-     * @return 所有节点的列表
+     * @return 所有节点的一维列表
      */
     public List<GridNode> getAllNodes() {
         List<GridNode> allNodes = new ArrayList<>();
