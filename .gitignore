@@ -40,3 +40,4 @@ out/
 **/src/test/**/*.class
 **/src/test/**/test-results/
 **/src/test/**/reports/
+**/src/test/**/
