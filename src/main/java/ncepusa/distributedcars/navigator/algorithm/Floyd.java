@@ -32,7 +32,7 @@ public class Floyd implements PathPlanningStrategy {
             for (GridNode v : allNodes) {
                 if (u.equals(v)) {
                     dist.get(u).put(v, 0.0);
-                } else if (map.isNeighbor(u, v) && !v.isObstacle()) {
+                } else if (map.isNodeNeighbor(u, v) && !v.isObstacle()) {
                     double cost = (u.getX() != v.getX() && u.getY() != v.getY()) ? Math.sqrt(2) : 1;
                     dist.get(u).put(v, cost);
                     next.get(u).put(v, v);

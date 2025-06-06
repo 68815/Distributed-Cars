@@ -146,7 +146,7 @@ public class ActiveMQListener {
         while((null == path.get(carid) || path.get(carid).isEmpty()) && tryCount++ <= mapSize.getX() * mapSize.getY()) {
             if(tryCount != 1) {
                 gridMap.get(carid).getEnd().setArrived(false);
-                logger.info("第{}次尝试:终点（{}，{}）失败", tryCount, gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY());
+                logger.info("第{}次尝试:终点（{}，{}）失败", tryCount - 1, gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY());
             }
             gridMap.get(carid).electEndpoint(carNumbers, carid);
             path.set(carid, pathPlanning.planPath(gridMap.get(carid), gridMap.get(carid).getStart(), gridMap.get(carid).getEnd()));

@@ -3,6 +3,8 @@ package ncepusa.distributedcars.navigator.algorithm;
 import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.geo.Point;
+import org.springframework.data.util.Pair;
 
 import java.util.*;
 
@@ -19,6 +21,9 @@ public class Dijkstra implements PathPlanningStrategy {
             return List.of();
         }
 
+        map.setClusterWidth(1);
+        map.setClusterHeight(1);
+
         PriorityQueue<GridNode> openSet = new PriorityQueue<>(Comparator.comparingDouble(GridNode::getG));
         Set<GridNode> closedSet = new HashSet<>();
 
@@ -31,7 +36,9 @@ public class Dijkstra implements PathPlanningStrategy {
                 return reconstructPath(current);
             }
             closedSet.add(current);
-            for (GridNode neighbor : map.getNeighbors(current)) {
+            List<Pair<Point, Point>> neighbors = map.getClusterNeighbors(current);
+            for (int i = 0; i < neighbors.size(); i++) {
+                GridNode neighbor = map.getGridNode(neighbors.get(i).getSecond());
                 if (neighbor.isObstacle() || closedSet.contains(neighbor)) {
                     continue;
                 }

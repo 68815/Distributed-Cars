@@ -4,40 +4,36 @@ import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.Unmodifiable;
+import org.springframework.data.geo.Point;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * <p>HPA*(Hierarchical Pathfinding A*)算法</p>
  *
  * @author 0109
  * @since 2025-06-04
- * @deprecated  该算法目前存在问题，需要进一步改正
+ * @deprecated 未完成，不使用
  */
 @Deprecated
-public class HPAStar implements PathPlanningStrategy{
+public class HPAStar implements PathPlanningStrategy {
     @Override
-    public List<GridNode> planPath(GridMap map, GridNode start, GridNode end) {
+    public List<GridNode> planPath(GridMap map, @NotNull GridNode start, GridNode end) {
         if (start.equals(end)) {
             return List.of();
         }
+        map.setClusterSize();
 
-        // 第一步：将地图划分为多个簇
-        Map<GridNode, Integer> clusterMap = divideIntoClusters(map);
-
-        // 第二步：在簇之间寻找高层次路径
-        List<Integer> highLevelPath = findHighLevelPath(clusterMap, start, end);
+        List<Point> highLevelPath = findHighLevelPath(map, start, end);
 
         // 第三步：在簇内重建详细路径
         List<GridNode> detailedPath = new ArrayList<>();
         for (int i = 0; i < highLevelPath.size() - 1; i++) {
-            int currentCluster = highLevelPath.get(i);
-            int nextCluster = highLevelPath.get(i + 1);
-            detailedPath.addAll(findIntraClusterPath(map, clusterMap, currentCluster, nextCluster));
+            Point currentCluster = highLevelPath.get(i);
+            Point nextCluster = highLevelPath.get(i + 1);
+            detailedPath.addAll(findIntraClusterPath(map, currentCluster, nextCluster));
         }
 
         // 第四步：从最终路径中移除起点
@@ -48,36 +44,20 @@ public class HPAStar implements PathPlanningStrategy{
         return detailedPath;
     }
 
-    private @NotNull Map<GridNode, Integer> divideIntoClusters(GridMap map) {
-        // 逻辑：将地图划分为多个簇
-        // 每个簇分配一个唯一的整数ID
-        Map<GridNode, Integer> clusterMap = new HashMap<>();
-        int clusterId = 0;
-        for (GridNode node : map.getAllNodes()) {
-            clusterMap.put(node, clusterId++);
-        }
-        return clusterMap;
-    }
-
     @Contract("_, _, _ -> new")
-    private @NotNull @Unmodifiable List<Integer> findHighLevelPath(Map<GridNode, Integer> clusterMap, GridNode start, GridNode end) {
-        // 逻辑：在簇之间寻找高层次路径
-        // 可以使用BFS或Dijkstra算法在簇图上完成
-        return List.of(clusterMap.get(start), clusterMap.get(end));
+    private @NotNull @Unmodifiable List<Point> findHighLevelPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
+        List<GridNode> highLevelPath = new AStar().planPath(map, start, end);
+
+        return null;
     }
 
-    private List<GridNode> findIntraClusterPath(GridMap map, Map<GridNode, Integer> clusterMap, int currentCluster, int nextCluster) {
-        // 逻辑：在簇内寻找详细路径
-        // 使用BFS或Dijkstra算法进行簇内路径搜索
-        return new BFS().planPath(map, getClusterEntrance(clusterMap, currentCluster), getClusterEntrance(clusterMap, nextCluster));
+    @Contract(pure = true)
+    private @NotNull @Unmodifiable List<GridNode> findIntraClusterPath(GridMap map, Point currentCluster, Point nextCluster) {
+        return new JPS().planPath(map, map.getGridNode(currentCluster), map.getGridNode(nextCluster));
     }
 
-    private GridNode getClusterEntrance(@NotNull Map<GridNode, Integer> clusterMap, int clusterId) {
-        // 逻辑：为给定的簇找到入口节点
-        return clusterMap.entrySet().stream()
-                .filter(entry -> entry.getValue() == clusterId)
-                .map(Map.Entry::getKey)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("未找到簇"));
+    @Contract(pure = true)
+    private @Nullable GridNode getClusterEntrance(@NotNull GridMap map, int clusterId) {
+        return null;
     }
 }

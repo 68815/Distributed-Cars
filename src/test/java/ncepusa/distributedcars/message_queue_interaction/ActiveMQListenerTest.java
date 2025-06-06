@@ -49,7 +49,7 @@ public class ActiveMQListenerTest {
         new PrimesUtil();
         String carId = "001";
         String message = "\"Car" + carId + "\"";
-        String carPositionCoordinate = "1,56";
+        String carPositionCoordinate = "10,0";
         Point mapSize = new Point(1000,1000);
         byte[] mapArray = new byte[(int) ((mapSize.getX() * mapSize.getY() + 7)/ 8)];
         for(int j = 0; j < mapSize.getY(); j++){
@@ -64,7 +64,7 @@ public class ActiveMQListenerTest {
             for(int i = 0; i < mapSize.getX(); i++){
                 int index = j * (int)mapSize.getX() + i;
                 if(index % 8 == 0) obstacleMapArray[index / 8] = 0;
-                if(i % (3 + (i & 1)) == 0 && j % (7 + ((i * j) & 1)) <= 2) obstacleMapArray[index / 8] |= (byte) (1 << (7 - index % 8));
+                if(i % (3 + (i & 1)) == 0 && j % (7 + ((i * j) & 1)) <= 3) obstacleMapArray[index / 8] |= (byte) (1 << (7 - index % 8));
             }
         }
 
@@ -79,7 +79,7 @@ public class ActiveMQListenerTest {
         // Act
         activeMQListener.primaryOnMessage(message);
 
-        Thread.sleep(10000000);
+        Thread.sleep(10000);
 
         // Assert
         verify(redisInteraction, times(1)).getCarPositionCoordinate(eq(carId));

@@ -4,6 +4,7 @@ import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.geo.Point;
+import org.springframework.data.util.Pair;
 
 import java.util.*;
 
@@ -14,9 +15,9 @@ import java.util.*;
  * @since 2025-05-21
  */
 public class AStar implements PathPlanningStrategy {
-
     @Override
     public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
+
         PriorityQueue<GridNode> openList = new PriorityQueue<GridNode>();
         Set<GridNode> closedList = new HashSet<GridNode>();
         start.setG(0);
@@ -29,8 +30,9 @@ public class AStar implements PathPlanningStrategy {
                 return reconstructPath(current);
             }
             closedList.add(current);
-            List<GridNode> neighbors = map.getNeighbors(current);
-            for (GridNode neighbor : neighbors) {
+            List<Pair<Point, Point>> neighbors = map.getClusterNeighbors(current);
+            for (int i = 0; i < neighbors.size(); i++) {
+                GridNode neighbor = map.getGridNode(neighbors.get(i).getSecond());
                 if (neighbor.isObstacle() || closedList.contains(neighbor)) continue;
                 double tentativeGCost = current.getG()
                         + (neighbor.getX() != current.getX() && neighbor.getY() != current.getY() ? Math.sqrt(2) : 1)
@@ -61,5 +63,10 @@ public class AStar implements PathPlanningStrategy {
         path.remove(path.size() - 1);
         Collections.reverse(path);
         return path;
+    }
+
+    public void setClusterSize(@NotNull GridMap map, int width, int height) {
+        map.setClusterWidth(width);
+        map.setClusterHeight(height);
     }
 }

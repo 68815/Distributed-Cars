@@ -7,9 +7,11 @@ import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.geo.Point;
+import org.springframework.data.util.Pair;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 
@@ -26,6 +28,10 @@ public class GridMap {
     private int height;
     private Point start;
     private Point end;
+    /**
+     * 簇的长宽
+     */
+    private int clusterWidth,clusterHeight;
     private static final Logger logger = LoggerFactory.getLogger(GridMap.class);
 
 
@@ -34,6 +40,8 @@ public class GridMap {
         this.grid = grid;
         this.width = grid.get(0).size();
         this.height = grid.size();
+        this.clusterWidth = 1;
+        this.clusterHeight = 1;
     }
 
     public GridMap(byte[] visitedMap, byte[] obstaclesMap, @NotNull Point mapSize, @NotNull Point start) {
@@ -59,6 +67,12 @@ public class GridMap {
             }
             grid.add(arrayList);
         }
+        /*
+          cluster的长宽影响了A*的效率，如果是普通的A*,不分层的情况下，cluster的长宽均为1
+          在HPA*中，需要设置cluster的长宽为合适的值
+        */
+        this.clusterWidth = 1;
+        this.clusterHeight = 1;
     }
 
     /**
@@ -72,6 +86,112 @@ public class GridMap {
     public double ManhattanDistance(@NotNull GridNode a, @NotNull GridNode b) {
         return Math.abs(a.getX() - b.getX()) + Math.abs(a.getY() - b.getY());
     }
+    public double ManhattanDistance(@NotNull Point a, @NotNull Point b) {
+        return Math.abs(a.getX() - b.getX()) + Math.abs(a.getY() - b.getY());
+    }
+
+
+    /**
+     * <p>寻找簇的宽度和高度</p>
+     * <p>尽量保证高层长宽和低层长宽满足<b>分形关系</b></p>
+     * <p>尽量保证所有簇的容量相同，如果不能保证，尽量保证容量差值不大</p>
+     */
+    public void setClusterSize() {
+        int tmpWidth = width;
+        while(PrimesUtil.isPrime(tmpWidth)) tmpWidth++; //最多循环2次，99.99999%情况下只循环1次
+        int st = (int) Math.sqrt(tmpWidth);
+        for(int i = st; i > 0; i--) {
+            if(tmpWidth % i == 0) {
+                clusterWidth = i;
+                break;
+            }
+        }
+        int tmphHeight = height;
+        while(PrimesUtil.isPrime(tmphHeight)) tmphHeight++;
+        st = (int) Math.sqrt(tmphHeight);
+        for(int i = st; i > 0; i--) {
+            if(tmphHeight % i == 0) {
+                clusterHeight = i;
+                break;
+            }
+        }
+    }
+
+    /**
+     * <p>获取给定节点所在簇与其所有邻居簇的 入口和出口<b>点对</b></p>
+     * @param nodeInCluster 指定的簇中的任意一个结点
+     * @return 入口和出口点对。
+     */
+    public @NotNull List<Pair<Point,Point>> getClusterNeighbors(@NotNull GridNode nodeInCluster) {
+        List<Pair<Point,Point>> neighborPointsPairs = new ArrayList<>();
+        if(clusterWidth == 1 && clusterHeight == 1) return getNodeNeighbors(nodeInCluster);
+        int clusterX = nodeInCluster.getX() / clusterWidth;
+        int clusterY = nodeInCluster.getY() / clusterHeight;
+
+        int startX = clusterX * clusterWidth;
+        int startY = clusterY * clusterHeight;
+        int endX = Math.min(startX + clusterWidth, width);
+        int endY = Math.min(startY + clusterHeight, height);
+        int count = clusterWidth * 2 + clusterHeight * 2 - 4;
+
+        //从左上角开始遍历边界，查找入口和出口点对
+        int sti = startX;
+        int stj = startY;
+        int dx = 1;
+        int dy = 0;
+        for(int k = 0; k < count; k++){
+            GridNode currentNode = getGridNode(sti, stj);
+            if(null != currentNode && !currentNode.isObstacle()) {
+                //当前节点为东/西/南/北边界上的点时，
+                //判断其东/西/南/北方向的邻居节点
+                GridNode neighborNode = getGridNode(sti + (dx == 0 ? dy : 0), stj + (dy == 0 ? -dx : 0));
+                if(null != neighborNode && !neighborNode.isObstacle()) {
+                    neighborPointsPairs.add(Pair.of(new Point(sti, stj), new Point(sti, stj + (dy == 0 ? -dx : 0))));
+                }
+                //判断其东北/西北/西南/西北方向的邻居节点
+                neighborNode = getGridNode(sti + (dx == 0 ? dy : -1), stj + (dy == 0 ? -dx : -1));
+                if(null != neighborNode && !neighborNode.isObstacle()) {
+                    neighborPointsPairs.add(Pair.of(new Point(sti, stj), new Point(sti + (dx == 0 ? dy : -1), stj + (dy == 0 ? -dx : -1))));
+                }
+                //判断其东南/西南/东南/东北方向的邻居节点
+                neighborNode = getGridNode(sti + (dx == 0 ? dy : 1), stj + (dy == 0 ? -dx : 1));
+                if(null != neighborNode && !neighborNode.isObstacle()) {
+                    neighborPointsPairs.add(Pair.of(new Point(sti, stj), new Point(sti + (dx == 0 ? dy : 1), stj + (dy == 0 ? -dx : 1))));
+                }
+            }
+            //顺时针
+            if(sti + dx >= endX){
+                dx = 0;
+                dy = 1;
+            }
+            else if(sti + dx < startX){
+                dx = 0;
+                dy = -1;
+            }
+            else if(stj + dy >= endY){
+                dx = -1;
+                dy = 0;
+            }
+            sti += dx;
+            stj += dy;
+        }
+
+        return neighborPointsPairs;
+    }
+
+    /**
+     * <p>预计算生成所有簇的入口和出口点对，保证性能</p>
+     * @return 所有簇的入口和出口点对。
+     */
+    public List<List<Pair<Point, Point>>> generateClustersPointsPairs() {
+        List<List<Pair<Point, Point>>> clustersPointsPairs = new ArrayList<>();
+        for(int i = 0; i < width; i += clusterWidth) {
+            for(int j = 0; j < height; j += clusterHeight) {
+                clustersPointsPairs.add(getClusterNeighbors(Objects.requireNonNull(getGridNode(i, j))));
+            }
+        }
+        return clustersPointsPairs;
+    }
 
     /**
      * 获取给定节点的邻居节点
@@ -79,8 +199,8 @@ public class GridMap {
      * @param gridNode 目标节点
      * @return 邻居节点列表
      */
-    public List<GridNode> getNeighbors(@NotNull GridNode gridNode) {
-        List<GridNode> neighbors = new ArrayList<>();
+    public List<Pair<Point,Point>> getNodeNeighbors(@NotNull GridNode gridNode) {
+        List<Pair<Point,Point>> neighbors = new ArrayList<>();
         int x = gridNode.getX();
         int y = gridNode.getY();
 
@@ -94,10 +214,10 @@ public class GridMap {
                     GridNode verticalNeighbor = getGridNode(x, ny);
                     if (null != horizontalNeighbor && !horizontalNeighbor.isObstacle() &&
                             null != verticalNeighbor && !verticalNeighbor.isObstacle()) {
-                        neighbors.add(getGridNode(nx, ny));
+                        neighbors.add(Pair.of(new Point(x, y), new Point(nx, ny)));
                     }
                 } else if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                    neighbors.add(getGridNode(nx, ny));
+                    neighbors.add(Pair.of(new Point(x, y), new Point(nx, ny)));
                 }
             }
         }
@@ -199,8 +319,9 @@ public class GridMap {
      */
     private int countUnexploredNeighbors(@NotNull GridNode node) {
         int count = node.isVisited() ? 0 : 1;
-        List<GridNode> neighbors = getNeighbors(node);
-        for (GridNode neighbor : neighbors) {
+        List<Pair<Point, Point>> neighbors = getNodeNeighbors(node);
+        for (int i = 0; i < neighbors.size(); i++) {
+            GridNode neighbor = getGridNode(neighbors.get(i).getSecond());
             if (!neighbor.isVisited()) {
                 count++;
             }
@@ -270,18 +391,42 @@ public class GridMap {
         }
         return grid.get(y).get(x);
     }
+    public GridNode getGridNode(@NotNull Point point) {
+        return getGridNode((int) point.getX(), (int) point.getY());
+    }
 
     /**
-     * 判断两个节点是否为邻居
+     * 判断两个节点是否为邻居,同时考虑空间和可达性
      *
      * @param u 第一个节点
      * @param v 第二个节点
      * @return 如果是邻居返回true，否则返回false
      */
-    public boolean isNeighbor(@NotNull GridNode u, @NotNull GridNode v) {
+    public boolean isNodeNeighbor(@NotNull GridNode u, @NotNull GridNode v) {
         int dx = Math.abs(u.getX() - v.getX());
         int dy = Math.abs(u.getY() - v.getY());
-        return (dx <= 1 && dy <= 1) && !(dx == 0 && dy == 0);
+        return (dx <= 1 && dy <= 1) && !(dx == 0 && dy == 0) && !u.isObstacle() &&!v.isObstacle();
+    }
+
+    /**
+     * 判断两个簇是否是邻居，同时考虑空间和可达性
+     * @param cluster1 第一个簇的高层坐标
+     * @param cluster2 第二个簇的高层坐标
+     * @return 如果是邻居返回true，否则返回false
+     * @deprecated 未完成，不使用
+     */
+    @Deprecated
+    public boolean isClusterNeighbor(@NotNull Point cluster1, @NotNull Point cluster2) {
+        int dx = (int)cluster2.getX() - (int)cluster1.getX();
+        int dy = (int)cluster2.getY() - (int)cluster1.getY();
+        if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (dx == 0 && dy == 0)) return false;
+        if (dx != 0 && dy != 0) {
+
+        }
+        else {
+
+        }
+        return false;
     }
 
     /**
@@ -335,5 +480,21 @@ public class GridMap {
 
     public void setEnd(Point end) {
         this.end = end;
+    }
+
+    public int getClusterWidth() {
+        return clusterWidth;
+    }
+
+    public void setClusterWidth(int clusterWidth) {
+        this.clusterWidth = clusterWidth;
+    }
+
+    public int getClusterHeight() {
+        return clusterHeight;
+    }
+
+    public void setClusterHeight(int clusterHeight) {
+        this.clusterHeight = clusterHeight;
     }
 }

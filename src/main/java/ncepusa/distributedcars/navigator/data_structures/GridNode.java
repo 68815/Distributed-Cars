@@ -22,6 +22,9 @@ public class GridNode implements Comparable<GridNode> {
     public GridNode(int x, int y){
         this.position = new Point(x, y);
     }
+    public GridNode(Point xy){
+        this.position = xy;
+    }
 
     public Point getXY() {
         return position;

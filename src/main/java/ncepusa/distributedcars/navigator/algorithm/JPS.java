@@ -46,8 +46,8 @@ public class JPS implements PathPlanningStrategy {
                 if (closedSet.contains(jumpPoint)) continue;
                 double newCost = current.getG() +
                         Math.min(Math.abs(current.getX() - jumpPoint.getX()), Math.abs(current.getY() - jumpPoint.getY())) * Math.sqrt(2) +
-                        Math.abs(Math.abs(current.getX() - jumpPoint.getX())) - Math.abs(current.getY() - jumpPoint.getY()) +
-                        (jumpPoint.isVisited() ? 2 : 0);
+                        Math.abs(Math.abs(current.getX() - jumpPoint.getX()) - Math.abs(current.getY() - jumpPoint.getY())) +
+                        (jumpPoint.isVisited() ? 1 : 0);
                 if (newCost < jumpPoint.getG()) {
                     jumpPoint.setG(newCost);
                     jumpPoint.setH(map.ManhattanDistance(jumpPoint, end));
@@ -72,9 +72,9 @@ public class JPS implements PathPlanningStrategy {
     private @NotNull List<GridNode> identifyJumpPoints(@NotNull GridMap map, GridNode current, GridNode goal) {
         List<GridNode> jumpPoints = new ArrayList<>();
 
-        for (int[] dir : DIRECTIONS) {
-            int dx = dir[0];
-            int dy = dir[1];
+        for (int k = 0; k < 8; k++) {
+            int dx = DIRECTIONS[k][0];
+            int dy = DIRECTIONS[k][1];
             GridNode jumpPoint = jump(map, current, new Point(dx, dy), goal);
             if (null != jumpPoint && !jumpPoints.contains(jumpPoint)) {
                 jumpPoints.add(jumpPoint);
@@ -111,8 +111,6 @@ public class JPS implements PathPlanningStrategy {
         if (dx != 0 && dy != 0) {
             if(null != jump(map, next, new Point(dx, 0), goal)) return next;
             if(null != jump(map, next, new Point(0, dy), goal)) return next;
-            if(null != jump(map, next, new Point(-dx, 0), goal)) return next;
-            if(null != jump(map, next, new Point(0, -dy), goal)) return next;
         }
         return jump(map, next, direction, goal);
     }
@@ -151,7 +149,7 @@ public class JPS implements PathPlanningStrategy {
 
     /**
      * 生成从起点到终点的完整路径。
-     * 该方法使用Bresenham算法或简单线性插值来计算两点之间的直线路径。
+     * 使用Bresenham算法或简单线性插值来计算两点之间的直线路径。
      * 如果路径无效（例如遇到障碍或越界），则返回空列表。
      *
      * @param from 起点
