@@ -23,7 +23,7 @@ public class JPS implements PathPlanningStrategy {
             {1, 1}, {1, -1}, {-1, -1}, {-1, 1}
     };
     @Override
-    public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
+    public List<Point> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
         if (start.equals(end)) {
             return List.of();
         }
@@ -122,23 +122,23 @@ public class JPS implements PathPlanningStrategy {
      * @param map 网格地图
      * @return 从起点到目标节点的完整路径
      */
-    private @NotNull List<GridNode> reconstructFullPath(GridNode endNode, GridMap map) {
-        List<GridNode> jumpPoints = new ArrayList<>();
+    private @NotNull List<Point> reconstructFullPath(GridNode endNode, GridMap map) {
+        List<Point> jumpPoints = new ArrayList<>();
         GridNode current = endNode;
 
         while (current != null) {
-            jumpPoints.add(current);
+            jumpPoints.add(new Point(current.getX(), current.getY()));
             current = current.getParent();
         }
         Collections.reverse(jumpPoints);
 
         if (jumpPoints.size() <= 1) return jumpPoints;
-        List<GridNode> fullPath = new ArrayList<>();
+        List<Point> fullPath = new ArrayList<>();
 
         for (int i = 0; i < jumpPoints.size() - 1; i++) {
-            GridNode from = jumpPoints.get(i);
-            GridNode to = jumpPoints.get(i + 1);
-            List<GridNode> segment = generateFullPathBetween(from, to, map);
+            GridNode from = map.getGridNode(jumpPoints.get(i));
+            GridNode to = map.getGridNode(jumpPoints.get(i + 1));
+            List<Point> segment = generateFullPathBetween(from, to, map);
             if (segment.isEmpty()) return Collections.emptyList();
             fullPath.addAll(segment.subList(i == 0 ? 1 : 0, segment.size() - 1));
         }
@@ -157,8 +157,8 @@ public class JPS implements PathPlanningStrategy {
      * @param map 地图
      * @return 完整路径
      */
-    private @NotNull List<GridNode> generateFullPathBetween(@NotNull GridNode from, @NotNull GridNode to, GridMap map) {
-        List<GridNode> segment = new ArrayList<>();
+    private @NotNull List<Point> generateFullPathBetween(@NotNull GridNode from, @NotNull GridNode to, GridMap map) {
+        List<Point> segment = new ArrayList<>();
 
         int x0 = from.getX(), y0 = from.getY();
         int x1 = to.getX(), y1 = to.getY();
@@ -173,7 +173,7 @@ public class JPS implements PathPlanningStrategy {
             int y = y0 + sy * i;
             GridNode node = map.getGridNode(x, y);
             if (node == null || node.isObstacle()) return Collections.emptyList();
-            segment.add(node);
+            segment.add(new Point(node.getX(), node.getY()));
         }
         return segment;
     }

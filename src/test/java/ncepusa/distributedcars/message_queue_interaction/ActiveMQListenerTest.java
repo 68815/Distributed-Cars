@@ -74,7 +74,7 @@ public class ActiveMQListenerTest {
         when(redisInteraction.getObstacleMap()).thenReturn(obstacleMapArray);
         when(redisInteraction.getMapSize()).thenReturn(mapSize);
 
-        ArgumentCaptor<List<GridNode>> pathCaptor = ArgumentCaptor.forClass(List.class);
+        ArgumentCaptor<List<Point>> pathCaptor = ArgumentCaptor.forClass(List.class);
 
         // Act
         activeMQListener.primaryOnMessage(message);
@@ -89,7 +89,7 @@ public class ActiveMQListenerTest {
         verify(redisInteraction, times(1)).getMapSize();
         verify(redisInteraction, times(1)).setTaskQueue(eq(carId), pathCaptor.capture());
 
-        List<GridNode> capturedPath = pathCaptor.getValue();
+        List<Point> capturedPath = pathCaptor.getValue();
         assertNotNull(capturedPath);
         assertFalse(capturedPath.isEmpty());
     }

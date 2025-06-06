@@ -2,6 +2,7 @@ package ncepusa.distributedcars.navigator.algorithm;
 
 import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
+import org.springframework.data.geo.Point;
 
 import java.util.List;
 
@@ -16,7 +17,7 @@ import java.util.List;
 public class PSO implements PathPlanningStrategy{
 
     @Override
-    public List<GridNode> planPath(GridMap map, GridNode start, GridNode end) {
+    public List<Point> planPath(GridMap map, GridNode start, GridNode end) {
         return List.of();
     }
 }

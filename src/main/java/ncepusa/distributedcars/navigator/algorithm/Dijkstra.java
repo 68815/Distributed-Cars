@@ -16,7 +16,7 @@ import java.util.*;
  */
 public class Dijkstra implements PathPlanningStrategy {
     @Override
-    public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
+    public List<Point> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
         if (start.equals(end)) {
             return List.of();
         }
@@ -55,10 +55,10 @@ public class Dijkstra implements PathPlanningStrategy {
         return Collections.emptyList();
     }
 
-    private @NotNull List<GridNode> reconstructPath(GridNode current) {
-        LinkedList<GridNode> path = new LinkedList<>();
+    private @NotNull List<Point> reconstructPath(GridNode current) {
+        LinkedList<Point> path = new LinkedList<>();
         while (current != null) {
-            path.add(current);
+            path.add(new Point(current.getX(), current.getY()));
             current = current.getParent();
         }
         path.removeLast();

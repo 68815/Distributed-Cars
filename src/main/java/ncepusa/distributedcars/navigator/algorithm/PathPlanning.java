@@ -4,6 +4,7 @@ import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.geo.Point;
 
 import java.util.List;
 
@@ -19,7 +20,7 @@ public class PathPlanning {
     public PathPlanning(PathPlanningStrategy pathPlanning) {
         this.pathPlanning = pathPlanning;
     }
-    public List<GridNode> planPath(@NotNull GridMap map, GridNode start, GridNode end) {
+    public List<Point> planPath(@NotNull GridMap map, GridNode start, GridNode end) {
         return pathPlanning.planPath(map, start, end);
     }
     public void setPathPlanning(@NotNull PathPlanningStrategy pathPlanning) {

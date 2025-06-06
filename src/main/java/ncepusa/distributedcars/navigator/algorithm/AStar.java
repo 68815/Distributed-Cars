@@ -16,7 +16,7 @@ import java.util.*;
  */
 public class AStar implements PathPlanningStrategy {
     @Override
-    public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
+    public List<Point> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
 
         PriorityQueue<GridNode> openList = new PriorityQueue<GridNode>();
         Set<GridNode> closedList = new HashSet<GridNode>();
@@ -54,10 +54,10 @@ public class AStar implements PathPlanningStrategy {
      * @param gridNode 目标节点
      * @return 从起点到终点的路径
      */
-    private @NotNull List<GridNode> reconstructPath(GridNode gridNode) {
-        List<GridNode> path = new ArrayList<>();
+    private @NotNull List<Point> reconstructPath(GridNode gridNode) {
+        List<Point> path = new ArrayList<>();
         while (gridNode != null) {
-            path.add(gridNode);
+            path.add(new Point(gridNode.getX(), gridNode.getY()));
             gridNode = gridNode.getParent();
         }
         path.remove(path.size() - 1);

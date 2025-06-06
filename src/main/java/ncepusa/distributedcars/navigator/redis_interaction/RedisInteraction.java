@@ -72,7 +72,7 @@ public class RedisInteraction {
                 Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_WIDTH_KEY))));
     }
 
-    public void setTaskQueue(String carId, @NotNull List<GridNode> gridNodes) {
+    public void setTaskQueue(String carId, @NotNull List<Point> gridNodes) {
         assert redisTemplate != null;
         redisTemplate.opsForList().rightPushAll("Car" + carId + "TaskList", gridNodes.stream()
                 .map(node -> node.getX() + "," + node.getY())

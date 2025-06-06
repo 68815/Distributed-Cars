@@ -45,7 +45,7 @@ public class ActiveMQListener {
     private Point mapSize;
     List<Point> carPosition;
     List<GridMap> gridMap;
-    List<List<GridNode>> path;
+    List<List<Point>> path;
 
     @Autowired
     @Contract(pure = true)
@@ -56,7 +56,7 @@ public class ActiveMQListener {
         obstacleMap = new ArrayList<byte[]>();
         carPosition = new ArrayList<Point>();
         gridMap = new ArrayList<GridMap>();
-        path = new ArrayList<List<GridNode>>();
+        path = new ArrayList<List<Point>>();
     }
     private static final Logger logger = LoggerFactory.getLogger(ActiveMQListener.class);
 
@@ -164,7 +164,7 @@ public class ActiveMQListener {
         // 修改日志输出方式
         logger.info("路径结果: {}",
                 path.get(carid).stream()
-                        .map(node -> String.format("(%d,%d)", node.getX(), node.getY()))
+                        .map(node -> String.format("(%d,%d)", (int)node.getX(), (int)node.getY()))
                         .collect(Collectors.joining(" -> ")));
     }
 

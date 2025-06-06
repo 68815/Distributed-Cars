@@ -4,6 +4,7 @@ package ncepusa.distributedcars.navigator.algorithm;
 import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.geo.Point;
 
 import java.util.*;
 
@@ -15,7 +16,7 @@ import java.util.*;
  */
 public class Floyd implements PathPlanningStrategy {
     @Override
-    public List<GridNode> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
+    public List<Point> planPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
         if (start.equals(end)) {
             return List.of();
         }
@@ -56,7 +57,7 @@ public class Floyd implements PathPlanningStrategy {
             return Collections.emptyList();
         }
 
-        List<GridNode> path = new ArrayList<>();
+        List<Point> path = new ArrayList<>();
         GridNode current = start;
 
         int maxSteps = allNodes.size() * 2;
@@ -67,7 +68,7 @@ public class Floyd implements PathPlanningStrategy {
             if (nextNode == null || path.contains(nextNode)) {
                 return Collections.emptyList(); // 防止死循环或无效路径
             }
-            path.add(nextNode);
+            path.add(new Point(nextNode.getX(), nextNode.getY()));
             current = nextNode;
 
             if (++steps > maxSteps) {

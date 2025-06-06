@@ -20,7 +20,7 @@ import java.util.*;
 @Deprecated
 public class HPAStar implements PathPlanningStrategy {
     @Override
-    public List<GridNode> planPath(GridMap map, @NotNull GridNode start, GridNode end) {
+    public List<Point> planPath(GridMap map, @NotNull GridNode start, GridNode end) {
         if (start.equals(end)) {
             return List.of();
         }
@@ -29,7 +29,7 @@ public class HPAStar implements PathPlanningStrategy {
         List<Point> highLevelPath = findHighLevelPath(map, start, end);
 
         // 第三步：在簇内重建详细路径
-        List<GridNode> detailedPath = new ArrayList<>();
+        List<Point> detailedPath = new ArrayList<>();
         for (int i = 0; i < highLevelPath.size() - 1; i++) {
             Point currentCluster = highLevelPath.get(i);
             Point nextCluster = highLevelPath.get(i + 1);
@@ -46,13 +46,13 @@ public class HPAStar implements PathPlanningStrategy {
 
     @Contract("_, _, _ -> new")
     private @NotNull @Unmodifiable List<Point> findHighLevelPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
-        List<GridNode> highLevelPath = new AStar().planPath(map, start, end);
+        List<Point> highLevelPath = new AStar().planPath(map, start, end);
 
         return null;
     }
 
     @Contract(pure = true)
-    private @NotNull @Unmodifiable List<GridNode> findIntraClusterPath(GridMap map, Point currentCluster, Point nextCluster) {
+    private @NotNull @Unmodifiable List<Point> findIntraClusterPath(GridMap map, Point currentCluster, Point nextCluster) {
         return new JPS().planPath(map, map.getGridNode(currentCluster), map.getGridNode(nextCluster));
     }
 
