@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.data.geo.Point;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -15,15 +16,25 @@ import java.util.List;
  * @since 2025-05-21
  */
 public class PathPlanning {
-    private PathPlanningStrategy pathPlanning;
-    @Contract(pure = true)
-    public PathPlanning(PathPlanningStrategy pathPlanning) {
-        this.pathPlanning = pathPlanning;
+    private final List<PathPlanningStrategy> pathPlannings;
+    private int currentIndex = 0;
+
+    public PathPlanning() {
+        pathPlannings = new ArrayList<>();
+        pathPlannings.add(new JPS());
+        pathPlannings.add(new AStar());
+        pathPlannings.add(new Dijkstra());
+        pathPlannings.add(new BFS());
+        pathPlannings.add(new Floyd());
     }
+
     public List<Point> planPath(@NotNull GridMap map, GridNode start, GridNode end) {
-        return pathPlanning.planPath(map, start, end);
+        return pathPlannings.get(currentIndex).planPath(map, start, end);
     }
-    public void setPathPlanning(@NotNull PathPlanningStrategy pathPlanning) {
-        this.pathPlanning = pathPlanning;
+
+    public void setStrategy(int index) {
+        if (index >= 0 && index < pathPlannings.size()) {
+            currentIndex = index;
+        }
     }
 }

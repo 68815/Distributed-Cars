@@ -4,7 +4,6 @@ import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import ncepusa.distributedcars.navigator.algorithm.*;
 import ncepusa.distributedcars.navigator.data_structures.GridMap;
-import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import ncepusa.distributedcars.navigator.redis_interaction.RedisInteraction;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
@@ -20,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -36,9 +36,9 @@ public class ActiveMQListener {
 
     private final RedisInteraction redisInteraction;
     PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-    private final ExecutorService executor = Executors.newFixedThreadPool(10);
+    private ExecutorService executor = Executors.newFixedThreadPool(20);
 
-    private final PathPlanning pathPlanning = new PathPlanning(null);
+    private final PathPlanning pathPlanning = new PathPlanning();
     private int carNumbers = 0;
     List<byte[]> visitedMap;
     List<byte[]> obstacleMap;
@@ -49,7 +49,7 @@ public class ActiveMQListener {
 
     @Autowired
     @Contract(pure = true)
-    public ActiveMQListener(RedisInteraction redisInteraction) {
+    public ActiveMQListener(@NotNull RedisInteraction redisInteraction) {
         this.redisInteraction = redisInteraction;
         redisInteraction.setNaViIdFinish();
         visitedMap = new ArrayList<byte[]>();
@@ -61,7 +61,7 @@ public class ActiveMQListener {
     private static final Logger logger = LoggerFactory.getLogger(ActiveMQListener.class);
 
     /**
-     * <p>使用独占消费者模式确保只有一个消费者进程在监听该消息，否则会出现一条消息被多个消费者同时消费的问题</p>
+     * <p>使用独占消费者模式确保只有一个消费者进程在监听该消息，否则会出现一条消息被多个消费者同时消费的问题,但我们只希望一条消息只被处理一次</p>
      * <p>这样当最开始获得连接的消费者进程关闭时（手动关闭或异常退出）可以有其他的消费者进程接手，保证导航器的正常运行</p>
      * <p>但独占消费者模式目前还存在一个待优化的问题：永远都只有一个消费者进程在处理消息，其他消费者只能一直尝试连接activemq队列，从而不能贡献自己的算力</p>
      * <p>应该在主消费者进程来不及处理其他消息时（即使是多线程在处理消息也有可能处理不过来），有其他消费者处理这些积压的消息</p>
@@ -70,6 +70,12 @@ public class ActiveMQListener {
      */
     @JmsListener(destination = "UpdateNavigate?consumer.exclusive=true")
     public void primaryOnMessage(@NotNull String message) {
+        /*if (executor instanceof ThreadPoolExecutor threadPool) {
+            int newSize = redisInteraction.getNaviNumber();
+            if (threadPool.getMaximumPoolSize() != newSize) {
+                threadPool.setCorePoolSize(newSize);
+                threadPool.setMaximumPoolSize(newSize);
+            }*/
         carNumbers = redisInteraction.getCarNumbers();
         while(carPosition.size() - 1 < carNumbers) {
             visitedMap.add(null);
@@ -83,9 +89,7 @@ public class ActiveMQListener {
 
     public void processMessage(String message) {
         try {
-
-            String carId = message.substring(4);
-            carId = carId.substring(0, carId.length() - 1);
+            String carId = message.substring(4, message.length() - 1);
             readDataFromRedis(carId);
             generatePath(carId);
             writePathToRedis(carId);
@@ -106,7 +110,7 @@ public class ActiveMQListener {
         int carid = Integer.parseInt(carId);
         String carPositionCoordinate = redisInteraction.getCarPositionCoordinate(carId);
 
-        visitedMap.set(carid, redisInteraction.getMap());
+        visitedMap.set(carid, redisInteraction.getVisitedMap());
         obstacleMap.set(carid, redisInteraction.getObstacleMap());
         mapSize = redisInteraction.getMapSize();
 
@@ -141,25 +145,31 @@ public class ActiveMQListener {
                         obstacleMap.get(carid),
                         mapSize,
                         carPosition.get(carid)));
-            pathPlanning.setPathPlanning(new JPS());
+
+            pathPlanning.setStrategy(redisInteraction.getAlgorithmIndex());
+
+            GridMap tmpGridMap = gridMap.get(carid);
         int tryCount = 0;
         while((null == path.get(carid) || path.get(carid).isEmpty()) && tryCount++ <= mapSize.getX() * mapSize.getY()) {
             if(tryCount != 1) {
-                gridMap.get(carid).getEnd().setArrived(false);
+                tmpGridMap.getEnd().setArrived(false);
                 logger.info("第{}次尝试:终点（{}，{}）失败", tryCount - 1, gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY());
             }
-            gridMap.get(carid).electEndpoint(carNumbers, carid);
-            path.set(carid, pathPlanning.planPath(gridMap.get(carid), gridMap.get(carid).getStart(), gridMap.get(carid).getEnd()));
+            tmpGridMap.setEnd(null);
+            tmpGridMap.electEndpoint(carNumbers, carid);
+            if(tmpGridMap.getEnd() == null) return;
+            path.set(carid, pathPlanning.planPath(tmpGridMap, tmpGridMap.getStart(), tmpGridMap.getEnd()));
         }
         long pathPlanningEnd = System.nanoTime();
 
+        redisInteraction.setTimeQueue(carId, path.get(carid).size(), (long)((pathPlanningEnd - pathPlanningStart) / 1e6));
         //监视器记录时间
         registry.timer("pathPlanning.time").record(pathPlanningEnd - pathPlanningStart, TimeUnit.NANOSECONDS);
 
         //写日志
         logger.info("路径规划(({},{}) -> ({},{}))花费时间: {} ms ",
-                gridMap.get(carid).getStart().getX(), gridMap.get(carid).getStart().getY(),
-                gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY(),
+                tmpGridMap.getStart().getX(), tmpGridMap.getStart().getY(),
+                tmpGridMap.getEnd().getX(), tmpGridMap.getEnd().getY(),
                 (pathPlanningEnd - pathPlanningStart) / 1e6);
         // 修改日志输出方式
         logger.info("路径结果: {}",

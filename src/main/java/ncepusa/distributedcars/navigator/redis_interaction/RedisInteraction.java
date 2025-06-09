@@ -1,6 +1,5 @@
 package ncepusa.distributedcars.navigator.redis_interaction;
 
-import ncepusa.distributedcars.navigator.data_structures.GridNode;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
@@ -28,11 +27,13 @@ public class RedisInteraction {
      */
     private final RedisTemplate<String, String> redisTemplate;
 
-    private static final String MAP_KEY = "map";
+    private static final String VISITED_MAP_KEY = "map";
     private static final String OBSTACLE_MAP_KEY = "obstacle_map";
     private static final String CAR_NUMBER_KEY = "CarNumber";
     private static final String MAP_LENGTH_KEY = "mapLength";
     private static final String MAP_WIDTH_KEY = "mapWidth";
+    private static final String NAVIGATOR_NUMBER_KEY = "NaviNumber";
+    private static final String ALGORITHM_KEY = "algorithm";
     private static final String IS_NAVI_FINISH_KEY = "IsNaviFinish";
     private static final String IS_NAVI_OPEN_KEY = "IsNaviOpen";
     private final String IS_NAVI_OPEN_LOCK_KEY = "IsNaviOpenLock";
@@ -42,10 +43,10 @@ public class RedisInteraction {
         this.redisTemplate = redisTemplate;
     }
 
-    public byte[] getMap() {
+    public byte[] getVisitedMap() {
         assert redisTemplate != null;
         return redisTemplate.execute((RedisCallback<byte[]>) connection -> {
-            return connection.stringCommands().get(MAP_KEY.getBytes());
+            return connection.stringCommands().get(VISITED_MAP_KEY.getBytes());
         });
     }
 
@@ -72,11 +73,33 @@ public class RedisInteraction {
                 Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_WIDTH_KEY))));
     }
 
+    public int getNaviNumber() {
+        assert redisTemplate != null;
+        String value = redisTemplate.opsForValue().get(NAVIGATOR_NUMBER_KEY);
+        return value == null ? 20 : Integer.parseInt(value);
+    }
+    public int getAlgorithmIndex(){
+        assert redisTemplate != null;
+        String value = redisTemplate.opsForValue().get(ALGORITHM_KEY);
+        return value == null ? 0 : Integer.parseInt(value);
+    }
+
     public void setTaskQueue(String carId, @NotNull List<Point> gridNodes) {
         assert redisTemplate != null;
         redisTemplate.opsForList().rightPushAll("Car" + carId + "TaskList", gridNodes.stream()
                 .map(node -> node.getX() + "," + node.getY())
                 .toArray(String[]::new));
+    }
+
+    /**
+     * 写入路径生成时间及路径长度
+     * @param carId 路径生成的车辆id
+     * @param counts 路径长度
+     * @param times 路径生成时间
+     */
+    public void setTimeQueue(String carId, int counts, long times) {
+        assert redisTemplate != null;
+        redisTemplate.opsForList().rightPushAll("Car" + carId + "TimeList", counts + "," + times);
     }
 
     public void setNaViIdFinish()

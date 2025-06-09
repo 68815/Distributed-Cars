@@ -19,16 +19,15 @@ import java.util.*;
  */
 @Deprecated
 public class HPAStar implements PathPlanningStrategy {
+    private int clusterWidth;
+    private int clusterHeight;
     @Override
     public List<Point> planPath(GridMap map, @NotNull GridNode start, GridNode end) {
         if (start.equals(end)) {
             return List.of();
         }
-        map.setClusterSize();
-
         List<Point> highLevelPath = findHighLevelPath(map, start, end);
 
-        // 第三步：在簇内重建详细路径
         List<Point> detailedPath = new ArrayList<>();
         for (int i = 0; i < highLevelPath.size() - 1; i++) {
             Point currentCluster = highLevelPath.get(i);
@@ -36,23 +35,25 @@ public class HPAStar implements PathPlanningStrategy {
             detailedPath.addAll(findIntraClusterPath(map, currentCluster, nextCluster));
         }
 
-        // 第四步：从最终路径中移除起点
-        if (!detailedPath.isEmpty() && detailedPath.get(0).equals(start)) {
-            detailedPath.remove(0);
-        }
+        if(!detailedPath.isEmpty()) detailedPath.remove(0);
 
         return detailedPath;
     }
 
     @Contract("_, _, _ -> new")
     private @NotNull @Unmodifiable List<Point> findHighLevelPath(@NotNull GridMap map, @NotNull GridNode start, @NotNull GridNode end) {
-        List<Point> highLevelPath = new AStar().planPath(map, start, end);
-
-        return null;
+        map.setClusterSize();
+        clusterWidth = map.getClusterWidth();
+        clusterHeight = map.getClusterHeight();
+        return new AStar().planPath(map, start, end);
     }
 
     @Contract(pure = true)
-    private @NotNull @Unmodifiable List<Point> findIntraClusterPath(GridMap map, Point currentCluster, Point nextCluster) {
+    private @NotNull @Unmodifiable List<Point> findIntraClusterPath(@NotNull GridMap map, Point currentCluster, Point nextCluster) {
+        currentCluster = new Point(currentCluster.getX() * clusterWidth, currentCluster.getY() * clusterHeight);
+        nextCluster = new Point(nextCluster.getX() * clusterWidth, nextCluster.getY() * clusterHeight);
+        map.setClusterWidth(1);
+        map.setClusterHeight(1);
         return new JPS().planPath(map, map.getGridNode(currentCluster), map.getGridNode(nextCluster));
     }
 

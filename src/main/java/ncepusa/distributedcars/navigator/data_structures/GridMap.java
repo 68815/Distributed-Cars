@@ -63,6 +63,7 @@ public class GridMap {
                     gridNode.setObstacle(true);
                 }
                 gridNode.setArrived(true);
+                
                 arrayList.add(gridNode);
             }
             grid.add(arrayList);
@@ -124,6 +125,7 @@ public class GridMap {
      */
     public @NotNull List<Pair<Point,Point>> getClusterNeighbors(@NotNull GridNode nodeInCluster) {
         List<Pair<Point,Point>> neighborPointsPairs = new ArrayList<>();
+        //簇的长宽均为1时，直接返回该节点的所有邻居
         if(clusterWidth == 1 && clusterHeight == 1) return getNodeNeighbors(nodeInCluster);
         int clusterX = nodeInCluster.getX() / clusterWidth;
         int clusterY = nodeInCluster.getY() / clusterHeight;
@@ -197,7 +199,7 @@ public class GridMap {
      * 获取给定节点的邻居节点
      *
      * @param gridNode 目标节点
-     * @return 邻居节点列表
+     * @return 邻居节点列表：.first:入口；.second:出口
      */
     public List<Pair<Point,Point>> getNodeNeighbors(@NotNull GridNode gridNode) {
         List<Pair<Point,Point>> neighbors = new ArrayList<>();

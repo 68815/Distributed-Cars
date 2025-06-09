@@ -1,6 +1,10 @@
 package ncepusa.distributedcars.navigator.data_structures;
 
 import org.jetbrains.annotations.NotNull;
+import org.springframework.data.geo.Point;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * <p>并查集</p>
@@ -10,24 +14,21 @@ import org.jetbrains.annotations.NotNull;
  * @version 1.0
  */
 public class UnionFind {
-    private final int[] parent;
-    private final int[] rank;
-    private int count;
+    private List<Integer> parent;
 
-    public UnionFind(int size) {
-        parent = new int[size];
-        rank = new int[size];
-        count = size;
-        for (int i = 0; i < size; i++) {
-            parent[i] = i;
-            rank[i] = 0;
+    public UnionFind(int width, int height) {
+        parent = new ArrayList<>();
+        for(int j = 0; j < height; j++) {
+            for(int i = 0; i < width; i++) {
+                parent.add(j * width + i);
+            }
         }
     }
 
     public int find(int p) {
-        while (p != parent[p]) {
-            parent[p] = parent[parent[p]]; // 路径压缩
-            p = parent[p];
+        while (p != parent.get(p)) {
+            parent.set(p, parent.get(parent.get(p)));
+            p = parent.get(p);
         }
         return p;
     }
@@ -36,23 +37,8 @@ public class UnionFind {
         int rootP = find(p);
         int rootQ = find(q);
         if (rootP == rootQ) return;
-
-        // 按秩合并
-        if (rank[rootP] > rank[rootQ]) {
-            parent[rootQ] = rootP;
-        } else if (rank[rootP] < rank[rootQ]) {
-            parent[rootP] = rootQ;
-        } else {
-            parent[rootQ] = rootP;
-            rank[rootP]++;
-        }
-        count--;
+        parent.set(rootQ, rootP);
     }
-
-    public int getCount() {
-        return count;
-    }
-
     /**
      * 统计gridMap中的连通块数量
      * @param grid 二维网格数组
@@ -79,7 +65,7 @@ public class UnionFind {
     }
 
     private static @NotNull UnionFind getUnionFind(byte[][] grid, int m, int n) {
-        UnionFind uf = new UnionFind(m * n);
+        UnionFind uf = new UnionFind(m, n);
 
         for (int i = 0; i < m; i++) {
             for (int j = 0; j < n; j++) {
