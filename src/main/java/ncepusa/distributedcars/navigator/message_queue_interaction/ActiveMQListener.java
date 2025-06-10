@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -94,6 +93,7 @@ public class ActiveMQListener {
             generatePath(carId);
             writePathToRedis(carId);
             path.set(Integer.parseInt(carId), null);
+            redisInteraction.setNaViIdFinish();
         } catch (Exception e) {
             logger.error("Error processing message: {}", message, e);
             registry.counter("messages.failed").increment();
@@ -152,8 +152,11 @@ public class ActiveMQListener {
         int tryCount = 0;
         while((null == path.get(carid) || path.get(carid).isEmpty()) && tryCount++ <= mapSize.getX() * mapSize.getY()) {
             if(tryCount != 1) {
+                tmpGridMap.setG();
                 tmpGridMap.getEnd().setArrived(false);
-                logger.info("第{}次尝试:终点（{}，{}）失败", tryCount - 1, gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY());
+                logger.info("第{}次尝试:起点 ({} {}) 终点（{}，{}）失败", tryCount - 1,
+                        gridMap.get(carid).getStart().getX(), gridMap.get(carid).getStart().getY(),
+                        gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY());
             }
             tmpGridMap.setEnd(null);
             tmpGridMap.electEndpoint(carNumbers, carid);
@@ -162,7 +165,7 @@ public class ActiveMQListener {
         }
         long pathPlanningEnd = System.nanoTime();
 
-        redisInteraction.setTimeQueue(carId, path.get(carid).size(), (long)((pathPlanningEnd - pathPlanningStart) / 1e6));
+        redisInteraction.setTimeQueue(carId, path.get(carid).size(), (pathPlanningEnd - pathPlanningStart) / 1e3);
         //监视器记录时间
         registry.timer("pathPlanning.time").record(pathPlanningEnd - pathPlanningStart, TimeUnit.NANOSECONDS);
 
@@ -186,7 +189,6 @@ public class ActiveMQListener {
         long redisWriteStart = System.nanoTime();
         int carid = Integer.parseInt(carId);
         redisInteraction.setTaskQueue(carId, path.get(carid));
-        redisInteraction.setNaViIdFinish();
 
         long redisWriteEnd = System.nanoTime();
 

@@ -69,8 +69,8 @@ public class RedisInteraction {
     public Point getMapSize() {
         assert redisTemplate != null;
         return new Point(
-                Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_LENGTH_KEY))),
-                Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_WIDTH_KEY))));
+                Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_WIDTH_KEY))),
+                Integer.parseInt(Objects.requireNonNull(redisTemplate.opsForValue().get(MAP_LENGTH_KEY))));
     }
 
     public int getNaviNumber() {
@@ -87,7 +87,7 @@ public class RedisInteraction {
     public void setTaskQueue(String carId, @NotNull List<Point> gridNodes) {
         assert redisTemplate != null;
         redisTemplate.opsForList().rightPushAll("Car" + carId + "TaskList", gridNodes.stream()
-                .map(node -> node.getX() + "," + node.getY())
+                .map(node -> (int)node.getX() + "," + (int)node.getY())
                 .toArray(String[]::new));
     }
 
@@ -95,9 +95,9 @@ public class RedisInteraction {
      * 写入路径生成时间及路径长度
      * @param carId 路径生成的车辆id
      * @param counts 路径长度
-     * @param times 路径生成时间
+     * @param times 路径生成时间(us)
      */
-    public void setTimeQueue(String carId, int counts, long times) {
+    public void setTimeQueue(String carId, int counts, double times) {
         assert redisTemplate != null;
         redisTemplate.opsForList().rightPushAll("Car" + carId + "TimeList", counts + "," + times);
     }

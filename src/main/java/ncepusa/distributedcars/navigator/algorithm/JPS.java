@@ -31,7 +31,7 @@ public class JPS implements PathPlanningStrategy {
         Set<GridNode> closedSet = new HashSet<>();
 
         start.setG(0);
-        start.setH(map.ManhattanDistance(start, end));
+        start.setH(map.diagonalDistance(start, end));
         openList.add(start);
 
         while (!openList.isEmpty()) {
@@ -40,17 +40,17 @@ public class JPS implements PathPlanningStrategy {
                 return reconstructFullPath(current, map);
             }
             closedSet.add(current);
-            List<GridNode> jumpPoints = identifyJumpPoints(map, current, end);
+            List<GridNode> jumpPoints = identifyJumpPoints(map ,current, end);
 
             for (GridNode jumpPoint : jumpPoints) {
                 if (closedSet.contains(jumpPoint)) continue;
                 double newCost = current.getG() +
                         Math.min(Math.abs(current.getX() - jumpPoint.getX()), Math.abs(current.getY() - jumpPoint.getY())) * Math.sqrt(2) +
-                        Math.abs(Math.abs(current.getX() - jumpPoint.getX()) - Math.abs(current.getY() - jumpPoint.getY())) +
-                        (jumpPoint.isVisited() ? 1 : 0);
+                        Math.abs(Math.abs(current.getX() - jumpPoint.getX()) - Math.abs(current.getY() - jumpPoint.getY()));
+                        //(jumpPoint.isVisited() ? 1 : 0);
                 if (newCost < jumpPoint.getG()) {
                     jumpPoint.setG(newCost);
-                    jumpPoint.setH(map.ManhattanDistance(jumpPoint, end));
+                    jumpPoint.setH(map.diagonalDistance(jumpPoint, end));
                     jumpPoint.setParent(current);
                     openList.add(jumpPoint);
                 }
@@ -105,14 +105,14 @@ public class JPS implements PathPlanningStrategy {
         GridNode next = map.getGridNode(newX, newY);
 
         if (next == null || next.isObstacle()) return null;
-        if (next.equals(goal) || map.hasForcedNeighbor(next, direction)) return next;
+        if (next.equals(goal) || map.hasForcedNeighbor(current, direction)) return next;
 
         // 如果是斜向跳跃，继续检查横向和纵向是否有跳点
         if (dx != 0 && dy != 0) {
             if(null != jump(map, next, new Point(dx, 0), goal)) return next;
-            if(null != jump(map, next, new Point(0, dy), goal)) return next;
+            if(null != jump(map,next, new Point(0, dy), goal)) return next;
         }
-        return jump(map, next, direction, goal);
+        return jump(map,next, direction, goal);
     }
 
     /**
@@ -171,9 +171,7 @@ public class JPS implements PathPlanningStrategy {
         for (int i = 0; i <= steps; i++) {
             int x = x0 + sx * i;
             int y = y0 + sy * i;
-            GridNode node = map.getGridNode(x, y);
-            if (node == null || node.isObstacle()) return Collections.emptyList();
-            segment.add(new Point(node.getX(), node.getY()));
+            segment.add(new Point(x, y));
         }
         return segment;
     }

@@ -91,6 +91,24 @@ public class GridMap {
         return Math.abs(a.getX() - b.getX()) + Math.abs(a.getY() - b.getY());
     }
 
+    /**
+     * 计算两个节点之间的欧几里得距离
+     *
+     * @param a 起始节点
+     * @param b 目标节点
+     * @return 欧几里得距离
+     */
+    public double diagonalDistance(GridNode a, GridNode b) {
+        double dx = Math.abs(a.getX() - b.getX());
+        double dy = Math.abs(a.getY() - b.getY());
+        return dx + dy + (Math.sqrt(2) - 2) * Math.min(dx, dy);
+    }
+    public double diagonalDistance(Point a, Point b) {
+        int dx = Math.abs((int) a.getX() - (int) b.getX());
+        int dy = Math.abs((int) a.getY() - (int) b.getY());
+        return dx + dy + (Math.sqrt(2) - 2) * Math.min(dx, dy);
+    }
+
 
     /**
      * <p>寻找簇的宽度和高度</p>
@@ -226,6 +244,13 @@ public class GridMap {
         return neighbors;
     }
 
+    public void setG(){
+        for(int j = 0; j < height; j++) {
+            for(int i = 0; i < width; i++) {
+                grid.get(j).get(i).setG(2147000000);
+            }
+        }
+    }
     /**
      * <p>根据小车数量划分区域：</p>
      * <ul>
@@ -296,9 +321,10 @@ public class GridMap {
         //当前小车已探索完自己的区域,开始协助其他小车探索其他区域
         maxUnexploredCount = -1;
         st:
-        for (int j = 0; j < height; j += (j == starty ? heightLength : 1)) {
-            for (int i = (startx == 0 ? endx : 0); i < width / (startx == 0 ? 1 : 2); i++) {
+        for (int j = 0; j < height; j++) {
+            for (int i = 0; i < width; i++) {
                 if (i == start.getX() && j == start.getY()) continue;
+                if (i >= startx && i < endx && j >= starty && j < endy) continue;
                 tmpNode = grid.get(j).get(i);
                 if (!tmpNode.isObstacle() && tmpNode.isArrived()) {
                     int exploredCount = countUnexploredNeighbors(tmpNode);
@@ -335,37 +361,78 @@ public class GridMap {
      * <p>检查在给定方向上是否存在“强制邻居”。</p>
      * <p>不需要考虑父节点和当前节点的相对方向，JPS算法的实现保证了父节点和当前节点的相对方向和direction指示的方向一定是一致的</p>
      *
-     * @param current   当前节点
+     * @param node   当前节点
      * @param direction 方向节点（表示方向）
      * @return 如果存在强制邻居则返回 true，否则返回 false
      */
-    public boolean hasForcedNeighbor(@NotNull GridNode current, @NotNull Point direction) {
+    public boolean hasForcedNeighbor(@NotNull GridNode node, @NotNull Point direction) {
         int dx = (int) direction.getX();
         int dy = (int) direction.getY();
 
-        if (dx != 0 && dy != 0) {
-            GridNode horizontalNeighbor = getGridNode(current.getX() + dx, current.getY());
-            GridNode verticalNeighbor = getGridNode(current.getX(), current.getY() + dy);
-
-            return (horizontalNeighbor != null && horizontalNeighbor.isObstacle()) ||
-                    (verticalNeighbor != null && verticalNeighbor.isObstacle());
-        } else if (dx != 0) {
-            GridNode upperNeighbor = getGridNode(current.getX() + dx, current.getY() + 1);
-            GridNode lowerNeighbor = getGridNode(current.getX() + dx, current.getY() - 1);
-
-            return (upperNeighbor != null && upperNeighbor.isObstacle()) ||
-                    (lowerNeighbor != null && lowerNeighbor.isObstacle());
-        } else if (dy != 0) {
-            GridNode leftNeighbor = getGridNode(current.getX() - 1, current.getY() + dy);
-            GridNode rightNeighbor = getGridNode(current.getX() + 1, current.getY() + dy);
-
-            return (leftNeighbor != null && leftNeighbor.isObstacle()) ||
-                    (rightNeighbor != null && rightNeighbor.isObstacle());
+        if (dx != 0 && dy != 0) { // 斜向移动
+            GridNode horizontal = getGridNode(node.getX() + dx, node.getY());
+            GridNode vertical = getGridNode(node.getX(), node.getY() + dy);
+            return (horizontal != null && horizontal.isObstacle()) ||
+                    (vertical != null && vertical.isObstacle());
+        } else if (dx != 0) { // 水平移动
+            GridNode upper = getGridNode(node.getX() + dx, node.getY() + 1);
+            GridNode lower = getGridNode(node.getX() + dx, node.getY() - 1);
+            return (upper != null && upper.isObstacle()) ||
+                    (lower != null && lower.isObstacle());
+        } else if (dy != 0) { // 垂直移动
+            GridNode left = getGridNode(node.getX() - 1, node.getY() + dy);
+            GridNode right = getGridNode(node.getX() + 1, node.getY() + dy);
+            return (left != null && left.isObstacle()) ||
+                    (right != null && right.isObstacle());
         }
-
         return false;
     }
 
+    /**
+     * 获取当前节点在指定方向上的强制邻居方向。
+     * @param current 当前节点
+     * @param direction 方向节点（表示方向）
+     * @return 强制邻居方向列表，如果没有强制邻居则返回空列表
+     */
+    @NotNull
+    public List<Point> getForcedDirs(GridNode current, @NotNull Point direction) {
+        int dx = (int) direction.getX();
+        int dy = (int) direction.getY();
+        List<Point> forcedDirs = new ArrayList<>();
+
+        if (dx != 0 && dy != 0) { // 斜向移动
+            // 检查横向和纵向两个方向是否有障碍
+            if (isObstacleAt(current.getX() + dx, current.getY())) {
+                forcedDirs.add(new Point(dx, 0));
+            }
+            if (isObstacleAt(current.getX(), current.getY() + dy)) {
+                forcedDirs.add(new Point(0, dy));
+            }
+        } else if (dx != 0) { // 水平移动
+            if (isObstacleAt(current.getX() + dx, current.getY() + 1)) {
+                forcedDirs.add(new Point(0, 1));
+            }
+            if (isObstacleAt(current.getX() + dx, current.getY() - 1)) {
+                forcedDirs.add(new Point(0, -1));
+            }
+        } else if (dy != 0) { // 垂直移动
+            if (isObstacleAt(current.getX() + 1, current.getY() + dy)) {
+                forcedDirs.add(new Point(1, 0));
+            }
+            if (isObstacleAt(current.getX() - 1, current.getY() + dy)) {
+                forcedDirs.add(new Point(-1, 0));
+            }
+        }
+
+        return forcedDirs;
+    }
+
+    public boolean isObstacleAt(int x, int y) {
+        if (x < 0 || x >= width || y < 0 || y >= height) {
+            return true;
+        }
+        return grid.get(y).get(x).isObstacle();
+    }
     /**
      * 获取当前节点在指定方向上的下一个节点。
      *

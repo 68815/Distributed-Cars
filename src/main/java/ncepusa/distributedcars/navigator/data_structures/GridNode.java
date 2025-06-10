@@ -99,11 +99,11 @@ public class GridNode implements Comparable<GridNode> {
     public boolean equals(Object o) {
         if (o == null || getClass() != o.getClass()) return false;
         GridNode gridNode = (GridNode) o;
-        return position.getX() == gridNode.getXY().getX() && position.getY() == gridNode.getXY().getY();
+        return (int)position.getX() == (int)gridNode.getXY().getX() && (int)position.getY() == (int)gridNode.getXY().getY();
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(position.getX(), position.getY());
+        return Objects.hash((int)position.getX(), (int)position.getY());
     }
 }
