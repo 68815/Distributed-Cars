@@ -1,6 +1,8 @@
 package ncepusa.distributedcars.navigator.redis_interaction;
 
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.geo.Point;
@@ -8,6 +10,7 @@ import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -26,6 +29,7 @@ public class RedisInteraction {
      * RedisTemplate对象，用于与Redis进行交互
      */
     private final RedisTemplate<String, String> redisTemplate;
+    private final Logger logger = LoggerFactory.getLogger(RedisInteraction.class.getName());
 
     private static final String VISITED_MAP_KEY = "map";
     private static final String OBSTACLE_MAP_KEY = "obstacle_map";
@@ -38,6 +42,7 @@ public class RedisInteraction {
     private static final String IS_NAVI_OPEN_KEY = "IsNaviOpen";
     private final String IS_NAVI_OPEN_LOCK_KEY = "IsNaviOpenLock";
     private final String IS_NAVI_FINISH_LOCK_KEY = "IsNaviFinishLock";
+
     @Autowired
     public RedisInteraction(RedisTemplate<String, String> redisTemplate) {
         this.redisTemplate = redisTemplate;
@@ -76,6 +81,7 @@ public class RedisInteraction {
     public int getNaviNumber() {
         assert redisTemplate != null;
         String value = redisTemplate.opsForValue().get(NAVIGATOR_NUMBER_KEY);
+        if(value == null) setNaViIdFinish();
         return value == null ? 20 : Integer.parseInt(value);
     }
     public int getAlgorithmIndex(){
@@ -102,10 +108,9 @@ public class RedisInteraction {
         redisTemplate.opsForList().rightPushAll("Car" + carId + "TimeList", counts + "," + times);
     }
 
-    public void setNaViIdFinish()
-    {
+    public void setNaViIdFinish() {
         String lockValue = UUID.randomUUID().toString();
-        long expireTime = 10000;
+        long expireTime = 10000; // 延长锁过期时间到10秒
 
         while (!acquireLock(IS_NAVI_FINISH_LOCK_KEY, lockValue, expireTime)) {
             try {
@@ -116,10 +121,12 @@ public class RedisInteraction {
         }
         try {
             String currentValue = redisTemplate.opsForValue().get(IS_NAVI_FINISH_KEY);
-            int count = currentValue == null ? 0 : (Integer.parseInt(currentValue) + 1);
-            redisTemplate.opsForValue().set(IS_NAVI_FINISH_KEY, String.valueOf(count));
+            int count = currentValue == null? 0 : Integer.parseInt(currentValue);
+            redisTemplate.opsForValue().set(IS_NAVI_FINISH_KEY, String.valueOf(count + 1));
+            logger.info("NaviIdFinish: {}", count);
         } finally {
-            if (lockValue.equals(redisTemplate.opsForValue().get(IS_NAVI_FINISH_LOCK_KEY))) {
+            String currentLock = redisTemplate.opsForValue().get(IS_NAVI_FINISH_LOCK_KEY);
+            if (lockValue.equals(currentLock)) {
                 releaseLock(IS_NAVI_FINISH_LOCK_KEY);
             }
         }
@@ -143,7 +150,8 @@ public class RedisInteraction {
         try {
             String currentValue = redisTemplate.opsForValue().get(IS_NAVI_OPEN_KEY);
             int count = currentValue == null ? 0 : Integer.parseInt(currentValue);
-            redisTemplate.opsForValue().set(IS_NAVI_OPEN_KEY, String.valueOf(count + fix));
+            count = Math.max(0, count + fix);
+            redisTemplate.opsForValue().set(IS_NAVI_OPEN_KEY, String.valueOf(count));
         } finally {
             if (lockValue.equals(redisTemplate.opsForValue().get(IS_NAVI_OPEN_LOCK_KEY))) {
                 releaseLock(IS_NAVI_OPEN_LOCK_KEY);

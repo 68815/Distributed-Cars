@@ -237,7 +237,10 @@ public class GridMap {
                         neighbors.add(Pair.of(new Point(x, y), new Point(nx, ny)));
                     }
                 } else if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                    neighbors.add(Pair.of(new Point(x, y), new Point(nx, ny)));
+                    GridNode neighbor = getGridNode(nx, ny);
+                    if (null!= neighbor &&!neighbor.isObstacle()) {
+                        neighbors.add(Pair.of(new Point(x, y), new Point(nx, ny)));
+                    }
                 }
             }
         }
@@ -252,7 +255,7 @@ public class GridMap {
         }
     }
     /**
-     * <p>根据小车数量划分区域：</p>
+     * <p>根据小车数量划分区域：</p>1021121
      * <ul>
      *   <li>奇数小车数量时，最后一个区域覆盖剩余空间，<b>尽量</b>保证所有小车探索区域的大小是一致的</li>
      *   <li>偶数小车数量时，均匀分配区域</li>
@@ -262,6 +265,7 @@ public class GridMap {
      *   <li>ID为奇数的小车负责左侧区域</li>
      * <p>分配区域后，每个小车在自己的区域内选择具有较多未探索点的点作为终点。</p>
      * <p>终点的选择基于每个节点自身及其周围未探索邻居的数量。</p>
+     * <p>小车探索完自己的区域后，会协助其他小车探索区域</p>
      *
      * @param carNumbers 小车数量
      * @param carid 当前小车的id
@@ -269,7 +273,7 @@ public class GridMap {
     public void electEndpoint(int carNumbers, int carid) {
         GridNode tmpNode;
         Point tmpEnd = null;
-        int maxUnexploredCount = -1;
+        int maxUnexploredCount = 0;
         Random random = new Random();
 
         int heightCount = carNumbers / 2;
@@ -294,13 +298,14 @@ public class GridMap {
             endy = height;
         }
 
+        boolean isUp = PrimesUtil.isPrime(carid + random.nextInt(4));
         st:
-        for (int j = (PrimesUtil.isPrime(carid) ? starty : (endy - 1));
+        for (int j = isUp ? starty : (endy - 1);
              j >= starty && j < endy;
-             j += (PrimesUtil.isPrime(carid) ? 1 : -1)) {
-            for (int i = (start.getX() < (endx + startx) / 2 ? (endx - 1) : startx);
+             j += isUp ? 1 : -1) {
+            for (int i = (start.getX() < (endx + startx) / 2 ? startx : (endx - 1));
                  i < endx && i >= startx;
-                 i += (start.getX() < (endx + startx) / 2 ? -1 : 1)) {
+                 i += (start.getX() < (endx + startx) / 2 ? 1 : -1)) {
                 if (i == start.getX() && j == start.getY()) continue;
                 tmpNode = grid.get(j).get(i);
                 if (!tmpNode.isObstacle() && tmpNode.isArrived()) {
@@ -308,7 +313,7 @@ public class GridMap {
                     if (exploredCount > maxUnexploredCount) {
                         maxUnexploredCount = exploredCount;
                         tmpEnd = new Point(i, j);
-                        if(maxUnexploredCount == 9) break st;
+                        if(maxUnexploredCount == 9 || random.nextDouble() <= 0.7) break st;
                     }
                 }
             }
@@ -319,7 +324,7 @@ public class GridMap {
         }
 
         //当前小车已探索完自己的区域,开始协助其他小车探索其他区域
-        maxUnexploredCount = -1;
+        maxUnexploredCount = 0;
         st:
         for (int j = 0; j < height; j++) {
             for (int i = 0; i < width; i++) {
@@ -331,7 +336,7 @@ public class GridMap {
                     if (exploredCount > maxUnexploredCount) {
                         maxUnexploredCount = exploredCount;
                         tmpEnd = new Point(i, j);
-                        if (maxUnexploredCount == 9 && random.nextDouble() <= 0.7) break st;
+                        if (maxUnexploredCount == 9 || random.nextDouble() <= 0.8) break st;
                     }
                 }
             }
@@ -347,11 +352,16 @@ public class GridMap {
      */
     private int countUnexploredNeighbors(@NotNull GridNode node) {
         int count = node.isVisited() ? 0 : 1;
-        List<Pair<Point, Point>> neighbors = getNodeNeighbors(node);
-        for (int i = 0; i < neighbors.size(); i++) {
-            GridNode neighbor = getGridNode(neighbors.get(i).getSecond());
-            if (!neighbor.isVisited()) {
-                count++;
+        for(int dx = -1; dx <= 1; dx++) {
+            for(int dy = -1; dy <= 1; dy++) {
+                if(dx == 0 && dy == 0) continue;
+                int nx = node.getX() + dx;
+                int ny = node.getY() + dy;
+                if(nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+                GridNode neighbor = getGridNode(nx, ny);
+                if (neighbor != null && !neighbor.isVisited()) {
+                    count++;
+                }
             }
         }
         return count;

@@ -10,6 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.geo.Point;
 import org.springframework.jms.annotation.JmsListener;
@@ -19,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -33,29 +35,33 @@ import java.util.stream.Collectors;
 @Component
 public class ActiveMQListener {
 
-    private final RedisInteraction redisInteraction;
+    private RedisInteraction redisInteraction;
     PrometheusMeterRegistry registry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-    private ExecutorService executor = Executors.newFixedThreadPool(20);
+    //private ExecutorService executor = Executors.newFixedThreadPool(20);
+    private final ExecutorService executor = Executors.newScheduledThreadPool(20);
 
     private final PathPlanning pathPlanning = new PathPlanning();
     private int carNumbers = 0;
-    List<byte[]> visitedMap;
-    List<byte[]> obstacleMap;
+    private final List<byte[]> visitedMap;
+    private final List<byte[]> obstacleMap;
     private Point mapSize;
-    List<Point> carPosition;
-    List<GridMap> gridMap;
-    List<List<Point>> path;
+    private final List<Point> carPosition;
+    private final List<GridMap> gridMap;
+    private final List<List<Point>> path;
 
-    @Autowired
     @Contract(pure = true)
     public ActiveMQListener(@NotNull RedisInteraction redisInteraction) {
         this.redisInteraction = redisInteraction;
-        redisInteraction.setNaViIdFinish();
         visitedMap = new ArrayList<byte[]>();
         obstacleMap = new ArrayList<byte[]>();
         carPosition = new ArrayList<Point>();
         gridMap = new ArrayList<GridMap>();
         path = new ArrayList<List<Point>>();
+    }
+
+    @Autowired
+    public void setRedisInteraction(RedisInteraction redisInteraction) {
+        this.redisInteraction = redisInteraction;
     }
     private static final Logger logger = LoggerFactory.getLogger(ActiveMQListener.class);
 
@@ -67,14 +73,16 @@ public class ActiveMQListener {
      *
      * @param message 消息
      */
-    @JmsListener(destination = "UpdateNavigate?consumer.exclusive=true")
+    @JmsListener(destination = "UpdateNavigate")
     public void primaryOnMessage(@NotNull String message) {
-        /*if (executor instanceof ThreadPoolExecutor threadPool) {
+        if (executor instanceof ThreadPoolExecutor threadPool) {
             int newSize = redisInteraction.getNaviNumber();
+            newSize = Math.max(1, Math.min(newSize, 20));
             if (threadPool.getMaximumPoolSize() != newSize) {
                 threadPool.setCorePoolSize(newSize);
                 threadPool.setMaximumPoolSize(newSize);
-            }*/
+            }
+        }
         carNumbers = redisInteraction.getCarNumbers();
         while(carPosition.size() - 1 < carNumbers) {
             visitedMap.add(null);
@@ -117,6 +125,7 @@ public class ActiveMQListener {
         if(null == carPositionCoordinate || null == visitedMap || null == obstacleMap || null == mapSize){
             registry.counter("messages.failed").increment();
             logger.error("redis中没有足够的数据，无法进行路径规划");
+            redisInteraction.setNaViIdFinish();
             return;
         }
 
@@ -124,6 +133,7 @@ public class ActiveMQListener {
                 mapSize.getX() * mapSize.getY() > obstacleMap.get(carid).length * 8){
             registry.counter("messages.failed").increment();
             logger.error("redis中地图数据长度不一致，无法进行路径规划");
+            redisInteraction.setNaViIdFinish();
             return;
         }
         String[] parts = carPositionCoordinate.split(",");
@@ -160,7 +170,10 @@ public class ActiveMQListener {
             }
             tmpGridMap.setEnd(null);
             tmpGridMap.electEndpoint(carNumbers, carid);
-            if(tmpGridMap.getEnd() == null) return;
+            if(tmpGridMap.getEnd() == null){
+                redisInteraction.setNaViIdFinish();
+                return;
+            }
             path.set(carid, pathPlanning.planPath(tmpGridMap, tmpGridMap.getStart(), tmpGridMap.getEnd()));
         }
         long pathPlanningEnd = System.nanoTime();
