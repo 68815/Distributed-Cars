@@ -73,7 +73,7 @@ public class ActiveMQListener {
      *
      * @param message 消息
      */
-    @JmsListener(destination = "UpdateNavigate")
+    @JmsListener(destination = "UpdateNavigate?consumer.exclusive=true")
     public void primaryOnMessage(@NotNull String message) {
         if (executor instanceof ThreadPoolExecutor threadPool) {
             int newSize = redisInteraction.getNaviNumber();
