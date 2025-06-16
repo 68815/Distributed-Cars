@@ -124,7 +124,7 @@ public class ActiveMQListener {
         obstacleMap.set(carid, redisInteraction.getObstacleMap());
         mapSize = redisInteraction.getMapSize();
 
-        if(null == carPositionCoordinate || null == visitedMap || null == obstacleMap || null == mapSize){
+        if(null == carPositionCoordinate || null == visitedMap.get(carid) || null == obstacleMap.get(carid) || null == mapSize){
             registry.counter("messages.failed").increment();
             logger.error("redis中没有足够的数据，无法进行路径规划");
             redisInteraction.setNaViIdFinish();
