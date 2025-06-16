@@ -1,5 +1,8 @@
 package ncepusa.distributedcars.navigator.data_structures;
 
+import org.springframework.data.geo.Point;
+import org.springframework.data.util.Pair;
+
 import java.util.List;
 
 /**
@@ -14,11 +17,10 @@ import java.util.List;
 @Deprecated
 public abstract class BaseMap {
     /**
-     *
      * @param gridNode 当前节点
      * @return 当前节点的邻居节点
      */
-    public abstract List<GridNode> getNeighbors(GridNode gridNode);
+    public abstract List<Pair<Point,Point>> getNodeNeighbors(GridNode gridNode);
 
     /**
      *

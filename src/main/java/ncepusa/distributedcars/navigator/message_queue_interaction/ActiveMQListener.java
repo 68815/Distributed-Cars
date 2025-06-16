@@ -97,14 +97,16 @@ public class ActiveMQListener {
     public void processMessage(String message) {
         try {
             String carId = message.substring(4, message.length() - 1);
+            Integer.parseInt(carId);
             readDataFromRedis(carId);
             generatePath(carId);
             writePathToRedis(carId);
             path.set(Integer.parseInt(carId), null);
-            redisInteraction.setNaViIdFinish();
         } catch (Exception e) {
             logger.error("Error processing message: {}", message, e);
             registry.counter("messages.failed").increment();
+        } finally{
+            redisInteraction.setNaViIdFinish();
         }
     }
 
@@ -188,10 +190,10 @@ public class ActiveMQListener {
                 tmpGridMap.getEnd().getX(), tmpGridMap.getEnd().getY(),
                 (pathPlanningEnd - pathPlanningStart) / 1e6);
         // 修改日志输出方式
-        logger.info("路径结果: {}",
+        /*logger.info("路径结果: {}",
                 path.get(carid).stream()
                         .map(node -> String.format("(%d,%d)", (int)node.getX(), (int)node.getY()))
-                        .collect(Collectors.joining(" -> ")));
+                        .collect(Collectors.joining(" -> ")));*/
     }
 
     /**

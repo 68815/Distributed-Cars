@@ -14,6 +14,11 @@ java {
 	}
 }
 
+test {
+	maxParallelForks = 1
+
+}
+
 repositories {
 	mavenCentral()
 }
