@@ -1,5 +1,7 @@
 package ncepusa.distributedcars;
 
+import io.github.cdimascio.dotenv.Dotenv;
+import io.github.cdimascio.dotenv.DotenvEntry;
 import ncepusa.distributedcars.config.RedisReconnectListener;
 import ncepusa.distributedcars.navigator.Navigator;
 import ncepusa.distributedcars.navigator.algorithm.PrimesUtil;
@@ -10,10 +12,16 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.util.Map;
+
 @SpringBootApplication
 //@EnableScheduling
 public class DistributedCarsApplication{
     public static void main(String[] args) {
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        for (DotenvEntry entry : dotenv.entries()) {
+            System.setProperty(entry.getKey(), entry.getValue());
+        }
         ConfigurableApplicationContext context = SpringApplication.run(DistributedCarsApplication.class, args);
         RedisInteraction redisInteraction = context.getBean(RedisInteraction.class);
         ActiveMQListener activeMQListener = context.getBean(ActiveMQListener.class);
