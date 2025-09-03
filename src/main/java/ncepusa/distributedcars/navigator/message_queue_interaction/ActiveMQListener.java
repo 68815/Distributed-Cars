@@ -7,8 +7,6 @@ import ncepusa.distributedcars.navigator.data_structures.GridMap;
 import ncepusa.distributedcars.navigator.redis_interaction.RedisInteraction;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Lazy;
@@ -63,7 +61,6 @@ public class ActiveMQListener {
     public void setRedisInteraction(RedisInteraction redisInteraction) {
         this.redisInteraction = redisInteraction;
     }
-    private static final Logger logger = LoggerFactory.getLogger(ActiveMQListener.class);
 
     /**
      * <p>使用独占消费者模式确保只有一个消费者进程在监听该消息，否则会出现一条消息被多个消费者同时消费的问题,但我们只希望一条消息只被处理一次</p>
@@ -103,7 +100,6 @@ public class ActiveMQListener {
             writePathToRedis(carId);
             path.set(Integer.parseInt(carId), null);
         } catch (Exception e) {
-            logger.error("Error processing message: {}", message, e);
             registry.counter("messages.failed").increment();
         } finally{
             redisInteraction.setNaViIdFinish();
@@ -114,9 +110,7 @@ public class ActiveMQListener {
      *  <p>从Redis中读取数据</p>
      *  <p>如果读取失败，记录失败消息并返回</p>
      */
-    private void readDataFromRedis(String carId) {
-        long redisReadStart = System.nanoTime();
-        logger.info(carId);
+    public void readDataFromRedis(String carId) {
         int carid = Integer.parseInt(carId);
         String carPositionCoordinate = redisInteraction.getCarPositionCoordinate(carId);
 
@@ -126,7 +120,6 @@ public class ActiveMQListener {
 
         if(null == carPositionCoordinate || null == visitedMap.get(carid) || null == obstacleMap.get(carid) || null == mapSize){
             registry.counter("messages.failed").increment();
-            logger.error("redis中没有足够的数据，无法进行路径规划");
             redisInteraction.setNaViIdFinish();
             return;
         }
@@ -134,23 +127,18 @@ public class ActiveMQListener {
         if(mapSize.getX() * mapSize.getY() > visitedMap.get(carid).length * 8 ||
                 mapSize.getX() * mapSize.getY() > obstacleMap.get(carid).length * 8){
             registry.counter("messages.failed").increment();
-            logger.error("redis中地图数据长度不一致，无法进行路径规划");
             redisInteraction.setNaViIdFinish();
             return;
         }
         String[] parts = carPositionCoordinate.split(",");
         carPosition.set(carid,new Point(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
-        long redisReadEnd = System.nanoTime();
-
-        logger.info("读redis花费时间： {} ms", (redisReadEnd - redisReadStart) / 1e6);
     }
 
     /**
      * <p>生成路径</p>
      * <p>如果生成失败，说明终点对于起点来说是不可达的，则更换终点重新规划</p>
      */
-    private void generatePath(String carId) {
-        long pathPlanningStart = System.nanoTime();
+    public void generatePath(String carId) {
         int carid = Integer.parseInt(carId);
         gridMap.set(carid,
                 new GridMap(visitedMap.get(carid),
@@ -166,9 +154,6 @@ public class ActiveMQListener {
             if(tryCount != 1) {
                 tmpGridMap.setG();
                 tmpGridMap.getEnd().setArrived(false);
-                logger.info("第{}次尝试:起点 ({} {}) 终点（{}，{}）失败", tryCount - 1,
-                        gridMap.get(carid).getStart().getX(), gridMap.get(carid).getStart().getY(),
-                        gridMap.get(carid).getEnd().getX(), gridMap.get(carid).getEnd().getY());
             }
             tmpGridMap.setEnd(null);
             tmpGridMap.electEndpoint(carNumbers, carid);
@@ -178,17 +163,11 @@ public class ActiveMQListener {
             }
             path.set(carid, pathPlanning.planPath(tmpGridMap, tmpGridMap.getStart(), tmpGridMap.getEnd()));
         }
-        long pathPlanningEnd = System.nanoTime();
 
-        redisInteraction.setTimeQueue(carId, path.get(carid).size(), (pathPlanningEnd - pathPlanningStart) / 1e3);
-        //监视器记录时间
-        registry.timer("pathPlanning.time").record(pathPlanningEnd - pathPlanningStart, TimeUnit.NANOSECONDS);
+        //redisInteraction.setTimeQueue(carId, path.get(carid).size(), (pathPlanningEnd - pathPlanningStart) / 1e3);
+        //registry.timer("pathPlanning.time").record(pathPlanningEnd - pathPlanningStart, TimeUnit.NANOSECONDS);
 
         //写日志
-        logger.info("路径规划(({},{}) -> ({},{}))花费时间: {} ms ",
-                tmpGridMap.getStart().getX(), tmpGridMap.getStart().getY(),
-                tmpGridMap.getEnd().getX(), tmpGridMap.getEnd().getY(),
-                (pathPlanningEnd - pathPlanningStart) / 1e6);
         // 修改日志输出方式
         /*logger.info("路径结果: {}",
                 path.get(carid).stream()
@@ -200,13 +179,10 @@ public class ActiveMQListener {
      * <p>将路径写入Redis</p>
      * <p>如果写入失败，记录失败消息并返回</p>
      */
-    private void writePathToRedis(String carId) {
-        long redisWriteStart = System.nanoTime();
+    public void writePathToRedis(String carId) {
         int carid = Integer.parseInt(carId);
         redisInteraction.setTaskQueue(carId, path.get(carid));
 
-        long redisWriteEnd = System.nanoTime();
-
-        logger.info("写redis花费时间: {} ms", (redisWriteEnd - redisWriteStart) / 1e6);
+        //logger.info("写redis花费时间: {} ms", (redisWriteEnd - redisWriteStart) / 1e6);
     }
 }

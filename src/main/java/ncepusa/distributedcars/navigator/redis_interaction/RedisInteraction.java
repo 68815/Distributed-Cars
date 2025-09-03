@@ -1,8 +1,6 @@
 package ncepusa.distributedcars.navigator.redis_interaction;
 
 import org.jetbrains.annotations.NotNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.geo.Point;
@@ -29,7 +27,6 @@ public class RedisInteraction {
      * RedisTemplate对象，用于与Redis进行交互
      */
     private final RedisTemplate<String, String> redisTemplate;
-    private final Logger logger = LoggerFactory.getLogger(RedisInteraction.class.getName());
 
     private static final String VISITED_MAP_KEY = "map";
     private static final String OBSTACLE_MAP_KEY = "obstacle_map";
@@ -123,7 +120,6 @@ public class RedisInteraction {
             String currentValue = redisTemplate.opsForValue().get(IS_NAVI_FINISH_KEY);
             int count = currentValue == null? 0 : Integer.parseInt(currentValue);
             redisTemplate.opsForValue().set(IS_NAVI_FINISH_KEY, String.valueOf(count + 1));
-            logger.info("NaviIdFinish: {}", count);
         } finally {
             String currentLock = redisTemplate.opsForValue().get(IS_NAVI_FINISH_LOCK_KEY);
             if (lockValue.equals(currentLock)) {

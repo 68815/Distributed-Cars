@@ -4,8 +4,6 @@ import ncepusa.distributedcars.navigator.algorithm.PrimesUtil;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.geo.Point;
 import org.springframework.data.util.Pair;
 
@@ -32,7 +30,6 @@ public class GridMap {
      * 簇的长宽
      */
     private int clusterWidth,clusterHeight;
-    private static final Logger logger = LoggerFactory.getLogger(GridMap.class);
 
 
     @Contract(pure = true)
